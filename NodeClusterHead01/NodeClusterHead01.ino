@@ -1,20 +1,3 @@
-/*
- Copyright (C) 2012 James Coliz, Jr. <maniacbug@ymail.com>
-
- This program is free software; you can redistribute it and/or
- modify it under the terms of the GNU General Public License
- version 2 as published by the Free Software Foundation.
- 
- Update 2014 - TMRh20
- */
-
-/**
- * Simplest possible example of using RF24Network 
- *
- * TRANSMITTER NODE
- * Every 2 seconds, send a payload to the receiver node.
- */
-
 #include <RF24Network.h>
 #include <RF24.h>
 #include <SPI.h>
@@ -23,8 +6,8 @@ RF24 radio(9,10);                    // nRF24L01(+) radio attached using Getting
 
 RF24Network network(radio);          // Network uses that radio
 
-const uint16_t this_node_id = 4;
-const uint16_t this_node = 021;        // Address of our node in Octal format
+/*const*/ uint16_t this_node_id;// = 1;
+/*const*/ uint16_t this_node;// = 01;        // Address of our node in Octal format
 const uint16_t cluster_head_node = 01; // Address of the cluster head node in Octal format
 const uint16_t base_station_node = 00;        // Address of the other node in Octal format
 
@@ -44,6 +27,29 @@ struct payload_t {                  // Structure of our payload
 
 void setup(void)
 {
+  int pilih = 0;
+   switch(pilih){
+    case 0:
+      this_node_id = 1;
+      this_node = 01;        // Address of our node in Octal format
+      break;
+    case 1:
+      this_node_id = 46;
+      this_node = 011;        // Address of our node in Octal format
+      break;
+    case 2:
+      this_node_id = 93;
+      this_node = 021;        // Address of our node in Octal format
+      break;
+    case 3:
+      this_node_id = 125;
+      this_node = 031;        // Address of our node in Octal format
+      break;
+    case 4:
+      this_node_id = 312;
+      this_node = 041;        // Address of our node in Octal format
+      break;
+  }
   Serial.begin(115200);
   Serial.println("RF24Network/examples/helloworld_tx/");
 
@@ -65,16 +71,16 @@ void loop() {
   network.update();                          // Check the network regularly
 
   //========== Receiving ==========//
-  while ( network.available() && packets_sent > 10) {
+  while ( network.available()) {
     RF24NetworkHeader received_header;
     payload_t received_payload;
     network.read(received_header, &received_payload, sizeof(received_payload));
     //Cluster head code
     if (is_cluster_head) {
-      if ( received_payload.command == 1 ) {
-        Serial.println("receiving command to change cluster head");
+      if ( received_payload.command == 100 ) {
+        Serial.println("receiving command to switch cluster head");
         //sent ack
-        payload_t payload = { 1, this_node_id, packets_sent };
+        payload_t payload = { 200, this_node_id, packets_sent };
         RF24NetworkHeader header(/*to node*/ received_header.from_node);
         bool ok = network.write(header,&payload,sizeof(payload));
         if (ok) {
@@ -91,7 +97,11 @@ void loop() {
 
     //Node wanting to be cluster head
     else {
-      if ( received_payload.command == 1 ) {
+      if (received_payload.command == 100) {
+        Serial.println("ok. stay.");
+        packets_sent = 0;
+      }
+      else if ( received_payload.command == 200 ) {
         Serial.println("ok. now this node is a cluster head.");
         packets_sent = 0;
         is_cluster_head = true;
@@ -119,9 +129,11 @@ void loop() {
 
     //Node ask to be a cluster head if already sent 10 or more packets
     if (packets_sent > 10 && is_cluster_head == false) {
-      payload_t payload = {/*command for asking to be a cluster head*/ 1, this_node_id, packets_sent };
+      Serial.println("ask for cluster head role");
+      payload_t payload = {/*command for asking to be a cluster head*/ 100, this_node_id, packets_sent };
       RF24NetworkHeader header(/*to node*/ cluster_head_node);
       ok = network.write(header,&payload,sizeof(payload));
+      ok = network.multicast(header,&payload,sizeof(payload),2);
     }
   }
 }
