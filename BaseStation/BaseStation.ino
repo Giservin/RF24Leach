@@ -24,11 +24,12 @@ RF24 radio(9,10);                // nRF24L01(+) radio attached using Getting Sta
 
 RF24Network network(radio);      // Network uses that radio
 const uint16_t this_node = 00;    // Address of our node in Octal format ( 04,031, etc)
-const uint16_t other_node = 01;   // Address of the other node in Octal format
+const uint16_t base_station_node = 01;   // Address of the other node in Octal format
 
 struct payload_t {                 // Structure of our payload
-  unsigned long ms;
-  unsigned long counter;
+  uint16_t command;
+  unsigned long node_id;
+  unsigned long data;
 };
 
 
@@ -53,10 +54,10 @@ void loop(void){
     payload_t payload;
     network.read(header,&payload,sizeof(payload));
     Serial.print("Received packet #");
-    Serial.print(payload.counter);
+    Serial.print(payload.data);
     Serial.print(" from node 0");
     Serial.print(header.from_node, OCT);
-    Serial.print(" at ");
-    Serial.println(payload.ms);
+    Serial.print(" with ID: ");
+    Serial.println(payload.node_id);
   }
 }
