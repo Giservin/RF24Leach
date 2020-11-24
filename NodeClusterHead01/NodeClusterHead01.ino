@@ -28,9 +28,13 @@ struct payload_t {                  // Structure of our payload
 void setup(void)
 {
   int pilih = 0;
+//  int pilih = 1;
+//  int pilih = 2;
+//  int pilih = 3;
+//  int pilih = 4;
    switch(pilih){
     case 0:
-      this_node_id = 1;
+      this_node_id = 5;
       this_node = 01;        // Address of our node in Octal format
       break;
     case 1:
@@ -50,6 +54,10 @@ void setup(void)
       this_node = 041;        // Address of our node in Octal format
       break;
   }
+
+  //LED STATUS
+  pinMode(8, OUTPUT);
+  
   Serial.begin(115200);
   Serial.println("RF24Network/examples/helloworld_tx/");
 
@@ -71,23 +79,33 @@ void loop() {
   network.update();                          // Check the network regularly
 
   //========== Receiving ==========//
-  while ( network.available()) {
+  while ( network.available() ) {
     RF24NetworkHeader received_header;
     payload_t received_payload;
     network.read(received_header, &received_payload, sizeof(received_payload));
     //Cluster head code
-    if (is_cluster_head) {
+    if (is_cluster_head && packets_sent > 5 ) {
       if ( received_payload.command == 100 ) {
         Serial.println("receiving command to switch cluster head");
-        //sent ack
-        payload_t payload = { 200, this_node_id, packets_sent };
+        //sent reset command to other node
+        payload_t payload = { 150, this_node_id, packets_sent };
         RF24NetworkHeader header(/*to node*/ received_header.from_node);
-        bool ok = network.write(header,&payload,sizeof(payload));
+        bool ok = network.multicast(header,&payload,sizeof(payload),2);  //multicast
         if (ok) {
-          Serial.println("ok. no longer a cluster head");
+          Serial.println("Sending ack to CH's candidate...");
+          //sent ack to cluster head candidate
+          payload_t cluster_head_payload = { 200, this_node_id, packets_sent };
+          RF24NetworkHeader cluster_head_header(/*to node*/ received_header.from_node);
+          ok = network.write(cluster_head_header,&cluster_head_payload,sizeof(cluster_head_payload));
           packets_sent = 0;
-          is_cluster_head = false;
-          network.begin(/*channel*/ 90, /*node address*/ received_header.from_node);
+          if (ok) {
+            Serial.println("ok. this node is no longer a cluster head");
+            is_cluster_head = false;
+            network.begin(/*channel*/ 90, /*node address*/ received_header.from_node);
+          }
+          else {
+            Serial.println("failed to send ack to CH's candidate... this node is still a cluster head");
+          }
         }
         else {
           Serial.println("failed.");
@@ -95,10 +113,10 @@ void loop() {
       }
     }
 
-    //Node wanting to be cluster head
+    //Node listening to others
     else {
-      if (received_payload.command == 100) {
-        Serial.println("ok. stay.");
+      if (received_payload.command == 150) {
+        Serial.println("ok. reset.");
         packets_sent = 0;
       }
       else if ( received_payload.command == 200 ) {
@@ -133,7 +151,15 @@ void loop() {
       payload_t payload = {/*command for asking to be a cluster head*/ 100, this_node_id, packets_sent };
       RF24NetworkHeader header(/*to node*/ cluster_head_node);
       ok = network.write(header,&payload,sizeof(payload));
-      ok = network.multicast(header,&payload,sizeof(payload),2);
     }
   }
+
+  //========== LED CH STATUS ==========//
+  if (is_cluster_head) {
+    digitalWrite(8, HIGH);
+  }
+  else {
+    digitalWrite(8, LOW);
+  }
+  
 }
