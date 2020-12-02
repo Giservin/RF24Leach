@@ -1,6 +1,14 @@
 #include <RF24Network.h>
 #include <RF24.h>
 #include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_INA219.h>
+
+Adafruit_INA219 ina219;
+float avg_current = 0;
+unsigned long sample_count = 0;
+unsigned long last_sampling = 0;
+const uint16_t sampling_rate = 100;
 
 /***********************************************************************
 ************* Set the Node Address *************************************
@@ -31,39 +39,45 @@ typedef enum { wdt_16ms = 0, wdt_32ms, wdt_64ms, wdt_128ms, wdt_250ms, wdt_500ms
 unsigned long awakeTime = 500;                          // How long in ms the radio will stay awake after leaving sleep mode
 unsigned long sleepTimer = 0;                           // Used to keep track of how long the system has been awake
 
+int pilih;
 
 struct payload_t {                  // Structure of our payload
   uint16_t command;
   unsigned long node_id;
   unsigned long data;
+  float avg_current;
 };
 
 void setup(void)
 {
-  int pilih = 0;
-//  int pilih = 1;
-//  int pilih = 2;
-//  int pilih = 3;
-//  int pilih = 4;
+  pilih = 0;
+//  pilih = 1;
+//  pilih = 2;
+//  pilih = 3;
+//  pilih = 4;
    switch(pilih){
     case 0:
-      this_node_id = 5;
+      this_node_id = 12;
       this_node = 01;        // Address of our node in Octal format
+      if (! ina219.begin()) {
+        Serial.println("Failed to find INA219 chip");
+        while (1) { delay(10); }
+      }
       break;
     case 1:
-      this_node_id = 46;
+      this_node_id = 27;
       this_node = 011;        // Address of our node in Octal format
       break;
     case 2:
-      this_node_id = 93;
+      this_node_id = 46;
       this_node = 021;        // Address of our node in Octal format
       break;
     case 3:
-      this_node_id = 125;
+      this_node_id = 73;
       this_node = 031;        // Address of our node in Octal format
       break;
     case 4:
-      this_node_id = 312;
+      this_node_id = 93;
       this_node = 041;        // Address of our node in Octal format
       break;
   }
@@ -86,12 +100,34 @@ void setup(void)
   radio.begin();
   network.begin(/*channel*/ 90, /*node address*/ this_node);
 
+  uint32_t currentFrequency;
+  
+  // Initialize the INA219.
+  // By default the initialization will use the largest range (32V, 2A).  However
+  // you can call a setCalibration function to change this range (see comments).
+//  if (! ina219.begin()) {
+//    Serial.println("Failed to find INA219 chip");
+//    while (1) { delay(10); }
+//  }
+  // To use a slightly lower 32V, 1A range (higher precision on amps):
+  //ina219.setCalibration_32V_1A();
+  // Or to use a lower 16V, 400mA range (higher precision on volts and amps):
+  ina219.setCalibration_16V_400mA();
+
+  Serial.println("Measuring voltage and current with INA219 ...");
+  
   /******************************** This is the configuration for sleep mode ***********************/
   //The watchdog timer will wake the MCU and radio every second to send a sleep payload, then go back to sleep
   network.setup_watchdog(wdt_1s);
 }
 
 void loop() {
+  
+//  float shuntvoltage = 0;
+//  float busvoltage = 0;
+//  float current_mA = 0;
+//  float loadvoltage = 0;
+//  float power_mW = 0;
   
   network.update();                          // Check the network regularly
 
@@ -176,8 +212,25 @@ void loop() {
   if ( now - last_sent >= interval ) {
     last_sent = now;
 
+//    shuntvoltage = ina219.getShuntVoltage_mV();
+//    busvoltage = ina219.getBusVoltage_V();
+//    current_mA = ina219.getCurrent_mA();
+//    power_mW = ina219.getPower_mW();
+//    loadvoltage = busvoltage + (shuntvoltage / 1000);
+//  
+//    Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
+//    Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
+//    Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
+//    Serial.print("Current:       "); Serial.print(ina219.getCurrent_mA()); Serial.println(" mA");
+//    Serial.print("Avg Current   :"); Serial.print(avg_current); Serial.println(" mAh");
+//    Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
+//    Serial.println("");
+
+//    Serial.print("Current:       "); Serial.print(ina219.getCurrent_mA()); Serial.println(" mA");
+//    Serial.print("Avg Current   :"); Serial.print(avg_current); Serial.println(" mA");
+
     Serial.print("Sending...");
-    payload_t payload = { 0, this_node_id, packets_sent };
+    payload_t payload = { 0, this_node_id, packets_sent, avg_current };
     RF24NetworkHeader header(/*to node*/ base_station_node);
     bool ok = network.write(header,&payload,sizeof(payload));
     if (ok) {
@@ -200,12 +253,21 @@ void loop() {
   /***************************** CALLING THE NEW SLEEP FUNCTION ************************/    
  
   if ( millis() - sleepTimer > awakeTime && !is_cluster_head && packets_sent < 10 ) {  // Want to make sure the Arduino stays awake for a little while when data comes in. Do NOT sleep if master node.
-     Serial.println("Sleep");
-     sleepTimer = millis();                           // Reset the timer value
-     delay(100);                                      // Give the Serial print some time to finish up
-     radio.stopListening();                           // Switch to PTX mode. Payloads will be seen as ACK payloads, and the radio will wake up
-     network.sleepNode(8,0);                          // Sleep the node for 8 cycles of 1second intervals
-     Serial.println("Awake"); 
+    sleepTimer = millis();
+    Serial.println("Sleep");                           // Reset the timer value
+    delay(100);                                      // Give the Serial print some time to finish up
+    radio.stopListening();                           // Switch to PTX mode. Payloads will be seen as ACK payloads, and the radio will wake up
+    network.sleepNode(8,0);                          // Sleep the node for 8 cycles of 1second intervals
+    Serial.println("Awake"); 
+  }
+
+  if ( this_node_id == 12 && millis() - last_sampling > sampling_rate ) {
+    last_sampling = millis();
+    sample_count++;
+    avg_current = avg_current * (sample_count - 1) / sample_count + (ina219.getCurrent_mA() / sample_count);
+////    Serial.println(sample_count);
+//    Serial.print("Current:       "); Serial.print(ina219.getCurrent_mA()); Serial.println(" mA");
+//    Serial.print("Avg Current   :"); Serial.print(avg_current); Serial.println(" mA");
   }
 
   //========== LED CH STATUS ==========//

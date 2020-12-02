@@ -33,6 +33,7 @@ struct payload_t {                 // Structure of our payload
   uint16_t command;
   unsigned long node_id;
   unsigned long data;
+  float avg_current;
 };
 
 
@@ -66,11 +67,14 @@ void loop(void){
     // Send time
     Serial.print(rtc.getTimeStr());
     Serial.print(" -- ");
-    Serial.print("Received packet #");
-    Serial.print(payload.data);
-    Serial.print(" from node 0");
+    Serial.print("Node 0");
     Serial.print(header.from_node, OCT);
-    Serial.print(" with ID: ");
-    Serial.println(payload.node_id);
+    Serial.print(", ID: ");
+    Serial.print(payload.node_id);
+    Serial.print(" => #");
+    Serial.print(payload.data);
+    Serial.print(" - Average current: ");
+    Serial.print(payload.avg_current);
+    Serial.println(" mA");
   }
 }
