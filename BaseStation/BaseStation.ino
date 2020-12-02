@@ -18,7 +18,10 @@
 #include <RF24Network.h>
 #include <RF24.h>
 #include <SPI.h>
+#include <DS3231.h>
 
+// Init the DS3231 using the hardware interface
+DS3231  rtc(SDA, SCL);
 
 RF24 radio(9,10);                // nRF24L01(+) radio attached using Getting Started board 
 
@@ -36,7 +39,11 @@ struct payload_t {                 // Structure of our payload
 void setup(void)
 {
   Serial.begin(115200);
-  Serial.println("RF24Network/examples/helloworld_rx/");
+  
+  // Initialize the rtc object
+  rtc.begin();
+  
+  Serial.println("RF24Leach/BaseStation/");
  
   SPI.begin();
   radio.begin();
@@ -53,6 +60,12 @@ void loop(void){
     RF24NetworkHeader header;        // If so, grab it and print it out
     payload_t payload;
     network.read(header,&payload,sizeof(payload));
+    // Send date
+    Serial.print(rtc.getDateStr());
+    Serial.print(" - ");
+    // Send time
+    Serial.print(rtc.getTimeStr());
+    Serial.print(" -- ");
     Serial.print("Received packet #");
     Serial.print(payload.data);
     Serial.print(" from node 0");
