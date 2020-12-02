@@ -110,7 +110,8 @@ void loop() {
           bool ok = false;
           for( int i = 0; i < 5; i++ ) {
             ok = false;
-            while(!ok) {
+            unsigned long last_try = millis();
+            while(!ok && millis() - last_try < 100) {
               if ( node_address_set[i] == this_node ) {
                 ok = true;
               }
@@ -176,11 +177,11 @@ void loop() {
     last_sent = now;
 
     Serial.print("Sending...");
-    packets_sent++;
     payload_t payload = { 0, this_node_id, packets_sent };
     RF24NetworkHeader header(/*to node*/ base_station_node);
     bool ok = network.write(header,&payload,sizeof(payload));
     if (ok) {
+      packets_sent++;
       Serial.println("ok.");
     }
     else {
