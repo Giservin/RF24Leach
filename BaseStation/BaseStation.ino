@@ -1,20 +1,3 @@
-/*
- Copyright (C) 2012 James Coliz, Jr. <maniacbug@ymail.com>
-
- This program is free software; you can redistribute it and/or
- modify it under the terms of the GNU General Public License
- version 2 as published by the Free Software Foundation.
- 
- Update 2014 - TMRh20
- */
-
-/**
- * Simplest possible example of using RF24Network,
- *
- * RECEIVER NODE
- * Listens for messages from the transmitter and prints them out.
- */
-
 #include <RF24Network.h>
 #include <RF24.h>
 #include <SPI.h>

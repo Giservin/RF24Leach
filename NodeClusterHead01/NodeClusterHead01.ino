@@ -28,6 +28,10 @@ const uint16_t base_station_node = 00;        // Address of the other node in Oc
 
 bool is_cluster_head;             // Am i a cluster head?
 
+const uint16_t node_count = 4;
+uint16_t node_address[node_count];
+bool is_leach[node_count];
+
 const unsigned long interval = 2000; //ms  // How often to send 'hello world to the other unit
 
 unsigned long last_sent;             // When did we last send?
@@ -102,16 +106,6 @@ void setup(void)
 
   uint32_t currentFrequency;
   
-  // Initialize the INA219.
-  // By default the initialization will use the largest range (32V, 2A).  However
-  // you can call a setCalibration function to change this range (see comments).
-//  if (! ina219.begin()) {
-//    Serial.println("Failed to find INA219 chip");
-//    while (1) { delay(10); }
-//  }
-  // To use a slightly lower 32V, 1A range (higher precision on amps):
-  //ina219.setCalibration_32V_1A();
-  // Or to use a lower 16V, 400mA range (higher precision on volts and amps):
   ina219.setCalibration_16V_400mA();
 
   Serial.println("Measuring voltage and current with INA219 ...");
@@ -122,12 +116,6 @@ void setup(void)
 }
 
 void loop() {
-  
-//  float shuntvoltage = 0;
-//  float busvoltage = 0;
-//  float current_mA = 0;
-//  float loadvoltage = 0;
-//  float power_mW = 0;
   
   network.update();                          // Check the network regularly
 
@@ -211,24 +199,6 @@ void loop() {
   unsigned long now = millis();              // If it's time to send a message, send it!
   if ( now - last_sent >= interval ) {
     last_sent = now;
-
-//    shuntvoltage = ina219.getShuntVoltage_mV();
-//    busvoltage = ina219.getBusVoltage_V();
-//    current_mA = ina219.getCurrent_mA();
-//    power_mW = ina219.getPower_mW();
-//    loadvoltage = busvoltage + (shuntvoltage / 1000);
-//  
-//    Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
-//    Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
-//    Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
-//    Serial.print("Current:       "); Serial.print(ina219.getCurrent_mA()); Serial.println(" mA");
-//    Serial.print("Avg Current   :"); Serial.print(avg_current); Serial.println(" mAh");
-//    Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
-//    Serial.println("");
-
-//    Serial.print("Current:       "); Serial.print(ina219.getCurrent_mA()); Serial.println(" mA");
-//    Serial.print("Avg Current   :"); Serial.print(avg_current); Serial.println(" mA");
-
     Serial.print("Sending...");
     payload_t payload = { 0, this_node_id, packets_sent, avg_current };
     RF24NetworkHeader header(/*to node*/ base_station_node);
