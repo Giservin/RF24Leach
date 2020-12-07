@@ -12,11 +12,14 @@ RF24Network network(radio);      // Network uses that radio
 const uint16_t this_node = 00;    // Address of our node in Octal format ( 04,031, etc)
 const uint16_t base_station_node = 01;   // Address of the other node in Octal format
 
+uint16_t cluster_head_count = 1;
+
 struct payload_t {                 // Structure of our payload
   uint16_t command;
   unsigned long node_id;
   unsigned long data;
   float avg_current;
+  bool leach;
 };
 
 
@@ -41,23 +44,41 @@ void loop(void){
   
   while ( network.available() ) {     // Is there anything ready for us?
     
-    RF24NetworkHeader header;        // If so, grab it and print it out
-    payload_t payload;
-    network.read(header,&payload,sizeof(payload));
+    RF24NetworkHeader received_header;        // If so, grab it and print it out
+    payload_t received_payload;
+    network.read(received_header,&received_payload,sizeof(received_payload));
     // Send date
     Serial.print(rtc.getDateStr());
     Serial.print(" - ");
     // Send time
     Serial.print(rtc.getTimeStr());
     Serial.print(" -- ");
-    Serial.print("Node 0");
-    Serial.print(header.from_node, OCT);
-    Serial.print(", ID: ");
-    Serial.print(payload.node_id);
-    Serial.print(" => #");
-    Serial.print(payload.data);
-    Serial.print(" - Average current: ");
-    Serial.print(payload.avg_current);
-    Serial.println(" mA");
+    switch ( received_payload.command ) {
+      case 0:
+        Serial.print("Node 0");
+        Serial.print(received_header.from_node, OCT);
+        Serial.print(", ID: ");
+        Serial.print(received_payload.node_id);
+        Serial.print(" => #");
+        Serial.print(received_payload.data);
+        Serial.print(" - Average current: ");
+        Serial.print(received_payload.avg_current);
+        Serial.println(" mA");
+        break;
+        
+      case 110:
+        Serial.println("Cluster head is changing.");
+        for ( int i = 1; i <= cluster_head_count; i++ ) {
+          bool ok = false;
+          payload_t payload = { 150, 0, 0, 0, false };
+          RF24NetworkHeader header(/*to node*/ i);
+          while (!ok) {
+            ok = network.write(header,&payload,sizeof(payload));
+            delay(10);
+          }
+        }
+        break;
+        
+    }
   }
 }
