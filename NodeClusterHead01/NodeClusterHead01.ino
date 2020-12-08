@@ -4,49 +4,38 @@
 #include <Wire.h>
 #include <Adafruit_INA219.h>
 
+//  INA219 variable
 Adafruit_INA219 ina219;
 float avg_current = 0;
 unsigned long sample_count = 0;
 unsigned long last_sampling = 0;
-const uint16_t sampling_rate = 100;
+const uint16_t sampling_rate = 100; // 100ms
 
-/***********************************************************************
-************* Set the Node Address *************************************
-/***********************************************************************/
- 
-// These are the Octal addresses that will be assigned
-const uint16_t node_address_set[5] = { 01, 011, 021, 031, 041 };
-
+//  RADIO SETUP variable
 RF24 radio(9,10);                    // nRF24L01(+) radio attached using Getting Started board 
-
 RF24Network network(radio);          // Network uses that radio
 
+//  ADDRESSING variable
 /*const*/ uint16_t this_node_id;// = 1;
 /*const*/ uint16_t this_node;// = 01;        // Address of our node in Octal format
 const uint16_t cluster_head_node = 01; // Address of the cluster head node in Octal format
 const uint16_t base_station_node = 00;        // Address of the other node in Octal format
 
+//  LEACH variable
 bool is_cluster_head;             // Am i a cluster head?
-
-const uint16_t node_count = 4;
-const uint16_t cluster_head_per_cluster = 1;
-uint16_t received_address[node_count];
 unsigned long leach_rounds = 0;
-unsigned long leach_counter = 0;
-unsigned long setup_counter = 0;
-bool is_leach[node_count];
 
+// SENDING variable
 const unsigned long interval = 2000; //ms  // How often to send 'hello world to the other unit
-
 unsigned long last_sent;             // When did we last send?
 unsigned long packets_sent;          // How many have we sent already
 
-//This is for sleep mode. It is not really required, as users could just use the number 0 through 10
+//  SLEEP variable
 typedef enum { wdt_16ms = 0, wdt_32ms, wdt_64ms, wdt_128ms, wdt_250ms, wdt_500ms, wdt_1s, wdt_2s, wdt_4s, wdt_8s } wdt_prescalar_e;
- 
 unsigned long awakeTime = 500;                          // How long in ms the radio will stay awake after leaving sleep mode
 unsigned long sleepTimer = 0;                           // Used to keep track of how long the system has been awake
 
+//  DATA STRUCT
 struct payload_t {                  // Structure of our payload
   uint16_t command;
   unsigned long node_id;
@@ -63,7 +52,7 @@ void setup(void)
 //  pilih = 2;
 //  pilih = 3;
 //  pilih = 4;
-
+//
 //  pilih = 5;
 //  pilih = 6;
 //  pilih = 7;
@@ -121,7 +110,7 @@ void setup(void)
   pinMode(8, OUTPUT);
   
   Serial.begin(115200);
-  Serial.println("RF24Network/examples/helloworld_tx/");
+  Serial.println("RF24Leach/NodeClusterHead01");
 
   if ( this_node == 1 || this_node == 2 ) {
     is_cluster_head = true;
@@ -157,154 +146,38 @@ void loop() {
     network.read(received_header, &received_payload, sizeof(received_payload));
     bool registered = false;
     bool ok = false;
-    uint16_t except;
-    switch ( received_payload.command ) {
-      case 100:
-        /*bool*/ registered = false; 
-        for ( int i = 0; i < node_count; i++ ) {
-          if ( received_address[i] == received_header.from_node ) {
-            Serial.print("Already receiving setup command from Node 0");
-            Serial.println(received_header.from_node, OCT);
-            registered = true;
-            break;
-          }
-        }
-        //kumpulkan anggota hingga penuh
-        if ( !registered ) {
-          Serial.print("Received setup command from Node 0");
-          Serial.print(received_header.from_node, OCT);
-          Serial.print(" with leach payload ");
-          Serial.println(received_payload.leach);
-//          if ( received_payload.leach == true && leach_counter < cluster_head_per_cluster ) {
-            is_leach[setup_counter] = received_payload.leach;
-//            leach_counter++;
-//          }
-//          else {
-//            is_leach[setup_counter] = false;
-//          }
-          received_address[setup_counter] = received_header.from_node;
-          setup_counter++;
-        }
-        //anggota telah penuh, kirim command ke base station
-        if(is_cluster_head == true && setup_counter == node_count) {
-          Serial.println("Sending command to base station, cluster head will change");
-          /*bool*/ ok = false;
-          payload_t payload = { 110, this_node_id, leach_counter, 0, false };
-          RF24NetworkHeader header(/*to node*/ base_station_node);
-          while (!ok) {
-            ok = network.write(header,&payload,sizeof(payload));
-            delay(10);
-          }
-          leach_counter = 0;
-          setup_counter = 0;
-        }
-        break;
-      
-      case 150:
-        //reset other nodes other than cluster head candidate
-//        reset_false_nodes();
-        //change cluster head
-        Serial.println("Changing cluster head.");
-        for ( int i = 0; i < node_count; i++ ) {
-          /*bool*/ ok = false;
-          if ( is_leach[i] == true ) {
-            Serial.print("0");
-            Serial.print(received_address[i], OCT);
-            Serial.print(" 210 ");
-            Serial.println(is_leach[i]);
-            payload_t payload = { 210, this_node, /*use this CH as an address*/0, 0, false };
-            RF24NetworkHeader header(/*to node*/ received_address[i]);
-            while (!ok) {
-              ok = network.write(header,&payload,sizeof(payload));
-              delay(10);
-            }
-            packets_sent = 0;
-            is_cluster_head = false;
-            this_node = received_address[i];
-            except = this_node;
-            network.begin(/*channel*/ 90, /*node address*/ this_node);
-            break;
-          }
-        }
-        reset_all_nodes(except);
-        empty_array();
-        break;
-
-      case 170:
-        //reset other nodes other than cluster head candidate
-        reset_false_nodes();
-        Serial.println("Changing cluster head.");
-        //other cluster's head first
-        for ( int i = 0; i < node_count; i++ ) {
-          /*bool*/ ok = false;
-          if ( is_leach[i] == true ) {
-            Serial.print("0");
-            Serial.print(received_address[i], OCT);
-            Serial.print(" 210 ");
-            Serial.println(is_leach[i]);
-            payload_t payload = { 210, this_node, /*use other CH's address*/1, 0, false };
-            RF24NetworkHeader header(/*to node*/ received_address[i]);
-            while (!ok) {
-              ok = network.write(header,&payload,sizeof(payload));
-              delay(10);
-            }
-            is_leach[i] = false;
-            break;
-          }
-        }
-        //then this cluster's head
-        for ( int i = 0; i < node_count; i++ ) {
-          /*bool*/ ok = false;
-          if ( is_leach[i] == true ) {
-            Serial.print("0");
-            Serial.print(received_address[i], OCT);
-            Serial.print(" 210 ");
-            Serial.println(is_leach[i]);
-            payload_t payload = { 210, this_node, /*use this CH as an address*/0, 0, false };
-            RF24NetworkHeader header(/*to node*/ received_address[i]);
-            while (!ok) {
-              ok = network.write(header,&payload,sizeof(payload));
-              delay(10);
-            }
-            packets_sent = 0;
-            is_cluster_head = false;
-            this_node = received_address[i];
-            network.begin(/*channel*/ 90, /*node address*/ this_node);
-            break;
-          }
-        }
-        reset_all_nodes(except);
-        empty_array();
-        break;
-
-      case 180:
-        //reset other nodes other than cluster head candidate
-        reset_all_nodes(except);
-        break;
-        
-      case 200:
-        Serial.println("ok. reset.");
-        packets_sent = 0;
-        leach_rounds++;
-        break;
-      case 210:
-        Serial.println("ok. now this node is a cluster head.");
-        if ( received_payload.data == 0 ) {
-          this_node = received_header.from_node;
-        }
-        else if ( received_payload.data == 1 ) {
-          if ( received_header.from_node == 01 ) {
-            this_node = 02;
-          }
-          else if ( received_header.from_node == 02 ) {
-            this_node = 01;
-          }
-        }
-        packets_sent = 0;
-        leach_rounds++;
-        is_cluster_head = true;
-        network.begin(/*channel*/ 90, /*node address*/ this_node);
-        break;
+    Serial.println(received_payload.command);
+    
+    //change cluster head
+    if ( received_payload.command == 150 && packets_sent > 3 ) {
+      Serial.println("Changing cluster head.");
+      Serial.print("0");
+      Serial.print(received_payload.data, OCT);
+      Serial.println(" 170 ");
+      payload_t payload = { 170, this_node, /*use this CH as an address*/this_node, 0, false };
+      RF24NetworkHeader header(/*to node*/ received_payload.data);
+      while (!ok) {
+        ok = network.write(header,&payload,sizeof(payload));
+        delay(10);
+      }
+      this_node = received_payload.data;
+      packets_sent = 0;
+      leach_rounds++;
+      is_cluster_head = false;
+      network.begin(/*channel*/ 90, /*node address*/ this_node);
+    }
+    else if ( received_payload.command == 170 && packets_sent > 3  ) {
+      Serial.println("ok. now this node is a cluster head.");
+      this_node = received_payload.data;
+      packets_sent = 0;
+      leach_rounds++;
+      is_cluster_head = true;
+      network.begin(/*channel*/ 90, /*node address*/ this_node);
+    }
+    else if ( received_payload.command == 200 && packets_sent > 3  ) {
+      Serial.println("ok. reset.");
+      packets_sent = 0;
+      leach_rounds++;
     }
   }
   
@@ -325,10 +198,10 @@ void loop() {
     }
 
     //Node ask to be a cluster head if already sent 10 or more packets
-    if (packets_sent > 10 && is_cluster_head == false) {
+    if (packets_sent > 10 && is_cluster_head == false && packets_sent % 5 == 1) {
       Serial.println("ask for cluster head role");
       payload_t payload = {/*command for asking to be a cluster head*/ 100, 0, 0, 0, true };
-      RF24NetworkHeader header(/*to node*/ cluster_head_node);
+      RF24NetworkHeader header(/*to node*/ base_station_node);
       ok = network.write(header,&payload,sizeof(payload));
     }
   }
@@ -361,49 +234,4 @@ void loop() {
     digitalWrite(8, LOW);
   }
   
-}
-
-void empty_array() {
-  for ( int i = 0; i < node_count; i++ ) {
-    received_address[i] = NULL;
-    is_leach[i] = NULL;
-  }
-}
-
-void reset_false_nodes() {
-  Serial.println("Reseting nodes.");
-  for ( int i = 0; i < node_count; i++ ) {
-    bool ok = false;
-    if ( is_leach[i] == false ) {
-      Serial.print("0");
-      Serial.print(received_address[i], OCT);
-      Serial.print(" 200 ");
-      Serial.println(is_leach[i]);
-      payload_t payload = { 200, this_node, received_address[i], 0, false };
-      RF24NetworkHeader header(/*to node*/ received_address[i]);
-      while (!ok) {
-        ok = network.write(header,&payload,sizeof(payload));
-        delay(10);
-      }
-    }
-  }
-}
-
-void reset_all_nodes(uint16_t except) {
-  Serial.println("Reseting nodes.");
-  for ( int i = 0; i < node_count; i++ ) {
-    bool ok = false;
-    if ( received_address[i] != except ) {
-      Serial.print("0");
-      Serial.print(received_address[i], OCT);
-      Serial.print(" 200 ");
-      Serial.println(is_leach[i]);
-      payload_t payload = { 200, this_node, received_address[i], 0, false };
-      RF24NetworkHeader header(/*to node*/ received_address[i]);
-      while (!ok) {
-        ok = network.write(header,&payload,sizeof(payload));
-        delay(10);
-      }
-    }
-  }
 }
