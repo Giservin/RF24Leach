@@ -51,11 +51,11 @@ struct payload_t {                  // Structure of our payload
 int pilih;
 void setup(void)
 {
-  pilih = 0;
+//  pilih = 0;
 //  pilih = 1;
 //  pilih = 2;
 //  pilih = 3;
-//  pilih = 4;
+  pilih = 4;
 //
 //  pilih = 5;
 //  pilih = 6;
@@ -137,7 +137,7 @@ void setup(void)
   
   /******************************** This is the configuration for sleep mode ***********************/
   //The watchdog timer will wake the MCU and radio every second to send a sleep payload, then go back to sleep
-  network.setup_watchdog(wdt_1s);
+  network.setup_watchdog(wdt_2s);
 
   // random seed
   randomSeed(analogRead(A0));
@@ -196,7 +196,7 @@ void loop() {
   
   //========== Sending  ==========//
   unsigned long now = millis();              // If it's time to send a message, send it!
-  if ( now - last_sent >= interval ) {
+  if ( now - last_sent >= interval || ( packets_sent < 10 && !is_cluster_head ) ) {
     last_sent = now;
     Serial.print("Sending...");
     payload_t payload = { 0, this_node_id, packets_sent, avg_current, true };
@@ -227,12 +227,12 @@ void loop() {
 
   /***************************** CALLING THE NEW SLEEP FUNCTION ************************/    
  
-  if ( millis() - sleepTimer > awakeTime && !is_cluster_head && packets_sent < 10 ) {  // Want to make sure the Arduino stays awake for a little while when data comes in. Do NOT sleep if master node.
+  if ( !is_cluster_head && packets_sent < 10 ) {  // Want to make sure the Arduino stays awake for a little while when data comes in. Do NOT sleep if master node.
     sleepTimer = millis();
     Serial.println("Sleep");                           // Reset the timer value
     delay(100);                                      // Give the Serial print some time to finish up
     radio.stopListening();                           // Switch to PTX mode. Payloads will be seen as ACK payloads, and the radio will wake up
-    network.sleepNode(8,0);                          // Sleep the node for 8 cycles of 1second intervals
+    network.sleepNode(1,255);                          // Sleep the node for 8 cycles of 1second intervals
     Serial.println("Awake"); 
   }
 
