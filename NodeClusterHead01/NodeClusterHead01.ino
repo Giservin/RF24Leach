@@ -9,7 +9,7 @@ Adafruit_INA219 ina219;
 float avg_current = 0;
 unsigned long sample_count = 0;
 unsigned long last_sampling = 0;
-const uint16_t sampling_rate = 100; // 100ms
+const uint16_t sampling_rate = 250; // 250ms
 
 //  RADIO SETUP variable
 RF24 radio(9,10);                    // nRF24L01(+) radio attached using Getting Started board 
@@ -38,6 +38,7 @@ unsigned long packets_sent;          // How many have we sent already
 typedef enum { wdt_16ms = 0, wdt_32ms, wdt_64ms, wdt_128ms, wdt_250ms, wdt_500ms, wdt_1s, wdt_2s, wdt_4s, wdt_8s } wdt_prescalar_e;
 unsigned long awakeTime = 500;                          // How long in ms the radio will stay awake after leaving sleep mode
 unsigned long sleepTimer = 0;                           // Used to keep track of how long the system has been awake
+uint16_t sleep_count = 0;
 
 //  DATA STRUCT
 struct payload_t {                  // Structure of our payload
@@ -137,7 +138,7 @@ void setup(void)
   
   /******************************** This is the configuration for sleep mode ***********************/
   //The watchdog timer will wake the MCU and radio every second to send a sleep payload, then go back to sleep
-  network.setup_watchdog(wdt_2s);
+  network.setup_watchdog(wdt_250ms);
 
   // random seed
   randomSeed(analogRead(A0));
@@ -196,12 +197,13 @@ void loop() {
   
   //========== Sending  ==========//
   unsigned long now = millis();              // If it's time to send a message, send it!
-  if ( now - last_sent >= interval || ( packets_sent < 10 && !is_cluster_head ) ) {
+  if ( now - last_sent >= interval || ( sleep_count < 9 && !is_cluster_head ) ) {
     last_sent = now;
     Serial.print("Sending...");
     payload_t payload = { 0, this_node_id, packets_sent, avg_current, true };
     RF24NetworkHeader header(/*to node*/ base_station_node);
     bool ok = network.write(header,&payload,sizeof(payload));
+    sleep_count = 0;
     if (ok) {
       packets_sent++;
       Serial.println("ok.");
@@ -227,8 +229,9 @@ void loop() {
 
   /***************************** CALLING THE NEW SLEEP FUNCTION ************************/    
  
-  if ( !is_cluster_head && packets_sent < 10 ) {  // Want to make sure the Arduino stays awake for a little while when data comes in. Do NOT sleep if master node.
+  if ( !is_cluster_head && packets_sent < 10 && sleep_count < 9 ) {  // Want to make sure the Arduino stays awake for a little while when data comes in. Do NOT sleep if master node.
     sleepTimer = millis();
+    sleep_count++;
     Serial.println("Sleep");                           // Reset the timer value
     delay(100);                                      // Give the Serial print some time to finish up
     radio.stopListening();                           // Switch to PTX mode. Payloads will be seen as ACK payloads, and the radio will wake up
@@ -236,10 +239,13 @@ void loop() {
     Serial.println("Awake"); 
   }
 
-  if ( this_node_id == 11 && millis() - last_sampling > sampling_rate ) {
+  if ( this_node_id == 11 && ( millis() - last_sampling > sampling_rate || ( sleep_count < 9 && !is_cluster_head ) ) ) {
     last_sampling = millis();
     sample_count++;
     avg_current = avg_current * (sample_count - 1) / sample_count + (ina219.getCurrent_mA() / sample_count);
+    Serial.print("sampling arus: ");
+    Serial.print(avg_current);
+    Serial.println(" mA");
 ////    Serial.println(sample_count);
 //    Serial.print("Current:       "); Serial.print(ina219.getCurrent_mA()); Serial.println(" mA");
 //    Serial.print("Avg Current   :"); Serial.print(avg_current); Serial.println(" mA");
