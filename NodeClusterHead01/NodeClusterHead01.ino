@@ -52,11 +52,11 @@ struct payload_t {                  // Structure of our payload
 int pilih;
 void setup(void)
 {
-//  pilih = 0;
+  pilih = 0;
 //  pilih = 1;
 //  pilih = 2;
 //  pilih = 3;
-  pilih = 4;
+//  pilih = 4;
 //
 //  pilih = 5;
 //  pilih = 6;
@@ -197,7 +197,7 @@ void loop() {
   
   //========== Sending  ==========//
   unsigned long now = millis();              // If it's time to send a message, send it!
-  if ( now - last_sent >= interval || ( sleep_count < 9 && !is_cluster_head ) ) {
+  if ( now - last_sent >= interval || ( sleep_count > 7 && !is_cluster_head ) ) {
     last_sent = now;
     Serial.print("Sending...");
     payload_t payload = { 0, this_node_id, packets_sent, avg_current, true };
@@ -229,7 +229,7 @@ void loop() {
 
   /***************************** CALLING THE NEW SLEEP FUNCTION ************************/    
  
-  if ( !is_cluster_head && packets_sent < 10 && sleep_count < 9 ) {  // Want to make sure the Arduino stays awake for a little while when data comes in. Do NOT sleep if master node.
+  if ( !is_cluster_head && packets_sent < 10 ) {  // Want to make sure the Arduino stays awake for a little while when data comes in. Do NOT sleep if master node.
     sleepTimer = millis();
     sleep_count++;
     Serial.println("Sleep");                           // Reset the timer value
@@ -239,14 +239,11 @@ void loop() {
     Serial.println("Awake"); 
   }
 
-  if ( this_node_id == 11 && ( millis() - last_sampling > sampling_rate || ( sleep_count < 9 && !is_cluster_head ) ) ) {
+  if ( this_node_id == 11 && ( millis() - last_sampling > sampling_rate || !is_cluster_head && packets_sent < 10 ) ) {
     last_sampling = millis();
     sample_count++;
     avg_current = avg_current * (sample_count - 1) / sample_count + (ina219.getCurrent_mA() / sample_count);
-    Serial.print("sampling arus: ");
-    Serial.print(avg_current);
-    Serial.println(" mA");
-////    Serial.println(sample_count);
+//    Serial.println(sample_count);
 //    Serial.print("Current:       "); Serial.print(ina219.getCurrent_mA()); Serial.println(" mA");
 //    Serial.print("Avg Current   :"); Serial.print(avg_current); Serial.println(" mA");
   }
