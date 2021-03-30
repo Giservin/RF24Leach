@@ -24,7 +24,7 @@ bool is_leach[node_count];
 
 struct payload_t {                 // Structure of our payload
   uint16_t command;
-  unsigned long node_id;
+  char node_id;
   unsigned long data;
   float avg_current;
   bool leach;
@@ -41,6 +41,8 @@ void setup(void)
   Serial.println("RF24Leach/BaseStation/");
  
   SPI.begin();
+
+  radio.setPALevel(RF24_PA_LOW);  // RF24_PA_MAX is default.
   radio.begin();
   network.begin(/*channel*/ 90, /*node address*/ this_node);
 }
@@ -82,7 +84,9 @@ void loop(void){
         for ( int i = 0; i < node_count; i++ ) {
           if ( received_address[i] == received_header.from_node ) {
             Serial.print("Already receiving setup command from Node 0");
-            Serial.println(received_header.from_node, OCT);
+            Serial.print(received_header.from_node, OCT);
+            Serial.print(" with id ");
+            Serial.println(received_payload.node_id);
             registered = true;
             break;
           }
@@ -91,6 +95,8 @@ void loop(void){
         if ( !registered ) {
           Serial.print("Received setup command from Node 0");
           Serial.print(received_header.from_node, OCT);
+          Serial.print(" with id ");
+          Serial.print(received_payload.node_id);
           Serial.print(" with leach payload ");
           Serial.println(received_payload.leach);
           if ( received_payload.leach == true ) {

@@ -16,7 +16,7 @@ RF24 radio(9,10);                    // nRF24L01(+) radio attached using Getting
 RF24Network network(radio);          // Network uses that radio
 
 //  ADDRESSING variable
-/*const*/ uint16_t this_node_id;// = 1;
+/*const*/ char this_node_id;// = 1;
 /*const*/ uint16_t this_node;// = 01;        // Address of our node in Octal format
 const uint16_t cluster_head_node = 01; // Address of the cluster head node in Octal format
 const uint16_t base_station_node = 00;        // Address of the other node in Octal format
@@ -43,7 +43,7 @@ uint16_t sleep_count = 0;
 //  DATA STRUCT
 struct payload_t {                  // Structure of our payload
   uint16_t command;
-  unsigned long node_id;
+  char node_id;
   unsigned long data;
   float avg_current;
   bool leach;
@@ -52,7 +52,7 @@ struct payload_t {                  // Structure of our payload
 int pilih;
 void setup(void)
 {
-  pilih = 0;
+//  pilih = 0;
 //  pilih = 1;
 //  pilih = 2;
 //  pilih = 3;
@@ -62,53 +62,54 @@ void setup(void)
 //  pilih = 6;
 //  pilih = 7;
 //  pilih = 8;
-//  pilih = 9;
+  pilih = 9;
    switch(pilih){
     case 0:
-      this_node_id = 11;
+      this_node_id = 65;
       this_node = 01;        // Address of our node in Octal format
-      if (! ina219.begin()) {
-        Serial.println("Failed to find INA219 chip");
-        while (1) { delay(10); }
-      }
       break;
     case 1:
-      this_node_id = 22;
+      this_node_id = 66;
       this_node = 011;        // Address of our node in Octal format
       break;
     case 2:
-      this_node_id = 33;
+      this_node_id = 67;
       this_node = 021;        // Address of our node in Octal format
       break;
     case 3:
-      this_node_id = 44;
+      this_node_id = 68;
       this_node = 031;        // Address of our node in Octal format
       break;
     case 4:
-      this_node_id = 55;
+      this_node_id = 69;
       this_node = 041;        // Address of our node in Octal format
       break;
       
     case 5:
-      this_node_id = 111;
+      this_node_id = 70;
       this_node = 02;        // Address of our node in Octal format
       break;
     case 6:
-      this_node_id = 222;
+      this_node_id = 71;
       this_node = 012;        // Address of our node in Octal format
       break;
     case 7:
-      this_node_id = 333;
+      this_node_id = 72;
       this_node = 022;        // Address of our node in Octal format
       break;
     case 8:
-      this_node_id = 444;
+      this_node_id = 73;
       this_node = 032;        // Address of our node in Octal format
       break;
     case 9:
-      this_node_id = 555;
+      this_node_id = 74;
       this_node = 042;        // Address of our node in Octal format
       break;
+  }
+
+  if (! ina219.begin()) {
+    Serial.println("Failed to find INA219 chip");
+    while (1) { delay(10); }
   }
 
   //LED STATUS
@@ -127,6 +128,8 @@ void setup(void)
   }
  
   SPI.begin();
+
+  radio.setPALevel(RF24_PA_LOW);  // RF24_PA_MAX is default.
   radio.begin();
   network.begin(/*channel*/ 90, /*node address*/ this_node);
 
@@ -163,7 +166,7 @@ void loop() {
       Serial.print("0");
       Serial.print(received_payload.data, OCT);
       Serial.println(" 170 ");
-      payload_t payload = { 170, this_node, /*use this CH as an address*/this_node, 0, false };
+      payload_t payload = { 170, this_node_id, /*use this CH as an address*/this_node, 0, false };
       RF24NetworkHeader header(/*to node*/ received_payload.data);
       while (!ok) {
         ok = network.write(header,&payload,sizeof(payload));
@@ -221,7 +224,7 @@ void loop() {
     if (packets_sent > 10 && is_cluster_head == false && packets_sent % 5 == 1) {
       bool cluster_head_candidate = leach();
       Serial.println("ask for cluster head role");
-      payload_t payload = {/*command for asking to be a cluster head*/ 100, 0, 0, 0, cluster_head_candidate };
+      payload_t payload = {/*command for asking to be a cluster head*/ 100, this_node_id, 0, 0, cluster_head_candidate };
       RF24NetworkHeader header(/*to node*/ base_station_node);
       ok = network.write(header,&payload,sizeof(payload));
     }
@@ -239,7 +242,7 @@ void loop() {
     Serial.println("Awake"); 
   }
 
-  if ( this_node_id == 11 && ( millis() - last_sampling > sampling_rate || !is_cluster_head && packets_sent < 10 ) ) {
+  if ( millis() - last_sampling > sampling_rate || !is_cluster_head && packets_sent < 10 ) {
     last_sampling = millis();
     sample_count++;
     avg_current = avg_current * (sample_count - 1) / sample_count + (ina219.getCurrent_mA() / sample_count);
