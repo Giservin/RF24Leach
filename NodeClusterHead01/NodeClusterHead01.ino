@@ -166,11 +166,11 @@ void loop() {
       Serial.print("0");
       Serial.print(received_payload.data, OCT);
       Serial.println(" 170 ");
-      payload_t payload = { 170, this_node_id, /*use this CH as an address*/this_node, 0, false };
-      RF24NetworkHeader header(/*to node*/ received_payload.data);
       while (!ok) {
+        payload_t payload = { 170, this_node_id, /*use this CH as an address*/this_node, 0, false };
+        RF24NetworkHeader header(/*to node*/ received_payload.data);
         ok = network.write(header,&payload,sizeof(payload));
-        delay(10);
+        delay(20);
       }
       this_node = received_payload.data;
       packets_sent = 0;
