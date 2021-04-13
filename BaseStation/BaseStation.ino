@@ -13,8 +13,8 @@ const uint16_t this_node = 00;    // Address of our node in Octal format ( 04,03
 const uint16_t base_station_node = 00;   // Address of the other node in Octal format
 
 //  SETTINGS variable
-const uint16_t node_count = 4;                    //change to add node
-const uint16_t cluster_head_count = 1;            //change to add node
+const uint16_t node_count = 8;                    //change to add node
+const uint16_t cluster_head_count = 2;            //change to add node
 
 uint16_t received_address[node_count];
 unsigned long leach_rounds = 0;
@@ -130,10 +130,10 @@ void loop(void){
             Serial.println(except[address - 1], OCT);
             payload_t payload = { 150, this_node, except[address - 1], 0, false };
             RF24NetworkHeader header(/*to cluster head*/ address);
-            while (!ok) {
+//            while (!ok) {
               ok = network.write(header,&payload,sizeof(payload));
-              delay(50);
-            }
+//              delay(50);
+//            }
           delay(250);
           }
           setup_counter = 0;
@@ -161,10 +161,10 @@ void reset_all_nodes(uint16_t *except, bool leach_increment) {
         Serial.println(is_leach[i]);
         payload_t payload = { 200, this_node, received_address[i], 0, false };
         RF24NetworkHeader header(/*to node*/ received_address[i]);
-        while (!ok) {
+//        while (!ok) {
           ok = network.write(header,&payload,sizeof(payload));
-          delay(50);
-        }
+//          delay(50);
+//        }
       }
     }
   }
@@ -178,9 +178,9 @@ void reset_all_nodes(uint16_t *except, bool leach_increment) {
       Serial.println(is_leach[i]);
       payload_t payload = { 210, this_node, received_address[i], 0, false };
       RF24NetworkHeader header(/*to node*/ received_address[i]);ok = network.write(header,&payload,sizeof(payload));
-      while (!ok) {
-        delay(50);
-      }
+//      while (!ok) {
+//        delay(50);
+//      }
     }
   }
   for ( int i = 0; i < node_count; i++ ) {
