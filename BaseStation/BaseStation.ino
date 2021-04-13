@@ -79,112 +79,112 @@ void loop(void){
         Serial.println(" mA");
         break;
         
-      case 100:
-        /*bool*/ registered = false; 
-        for ( int i = 0; i < node_count; i++ ) {
-          if ( received_address[i] == received_header.from_node ) {
-            Serial.print("Already receiving setup command from Node 0");
-            Serial.print(received_header.from_node, OCT);
-            Serial.print(" with id ");
-            Serial.println(received_payload.node_id);
-            registered = true;
-            break;
-          }
-        }
-        //kumpulkan anggota hingga penuh
-        if ( !registered ) {
-          Serial.print("Received setup command from Node 0");
-          Serial.print(received_header.from_node, OCT);
-          Serial.print(" with id ");
-          Serial.print(received_payload.node_id);
-          Serial.print(" with leach payload ");
-          Serial.println(received_payload.leach);
-          if ( received_payload.leach == true ) {
-            is_leach[setup_counter] = received_payload.leach;
-            leach_counter++;
-          }
-          received_address[setup_counter] = received_header.from_node;
-          setup_counter++;
-        }
-        //anggota telah penuh, kirim command ke base station
-        if(setup_counter == node_count && leach_counter >= cluster_head_count) {
-          network.update();                          // Check the network regularly
-          Serial.println("Cluster head will change.");
-          for ( int cluster_head_address = 1; cluster_head_address <= cluster_head_count; cluster_head_address++ ) {
-            for ( int i = 0; i < node_count; i++ ) {
-              /*bool*/ ok = false;
-              if ( is_leach[i] == true ) {
-                is_leach[i] = false;
-                except[cluster_head_address - 1] = received_address[i];
-                break;
-              }
-            }
-          }
-          reset_all_nodes(except, true);
-          for ( int address = 1; address <= cluster_head_count; address++ ) {
-            network.update();                          // Check the network regularly
-            /*bool*/ ok = false;
-            Serial.print("150: 0");
-            Serial.print(address, OCT);
-            Serial.print(" => 170: 0");
-            Serial.println(except[address - 1], OCT);
-            payload_t payload = { 150, this_node, except[address - 1], 0, false };
-            RF24NetworkHeader header(/*to cluster head*/ address);
-//            while (!ok) {
-              ok = network.write(header,&payload,sizeof(payload));
-//              delay(50);
+//      case 100:
+//        /*bool*/ registered = false; 
+//        for ( int i = 0; i < node_count; i++ ) {
+//          if ( received_address[i] == received_header.from_node ) {
+//            Serial.print("Already receiving setup command from Node 0");
+//            Serial.print(received_header.from_node, OCT);
+//            Serial.print(" with id ");
+//            Serial.println(received_payload.node_id);
+//            registered = true;
+//            break;
+//          }
+//        }
+//        //kumpulkan anggota hingga penuh
+//        if ( !registered ) {
+//          Serial.print("Received setup command from Node 0");
+//          Serial.print(received_header.from_node, OCT);
+//          Serial.print(" with id ");
+//          Serial.print(received_payload.node_id);
+//          Serial.print(" with leach payload ");
+//          Serial.println(received_payload.leach);
+//          if ( received_payload.leach == true ) {
+//            is_leach[setup_counter] = received_payload.leach;
+//            leach_counter++;
+//          }
+//          received_address[setup_counter] = received_header.from_node;
+//          setup_counter++;
+//        }
+//        //anggota telah penuh, kirim command ke base station
+//        if(setup_counter == node_count && leach_counter >= cluster_head_count) {
+//          network.update();                          // Check the network regularly
+//          Serial.println("Cluster head will change.");
+//          for ( int cluster_head_address = 1; cluster_head_address <= cluster_head_count; cluster_head_address++ ) {
+//            for ( int i = 0; i < node_count; i++ ) {
+//              /*bool*/ ok = false;
+//              if ( is_leach[i] == true ) {
+//                is_leach[i] = false;
+//                except[cluster_head_address - 1] = received_address[i];
+//                break;
+//              }
 //            }
-          delay(250);
-          }
-          setup_counter = 0;
-          leach_counter = 0;
-        }
-        else if (setup_counter == node_count) {
-          reset_all_nodes(except, false);
-          setup_counter = 0;
-          leach_counter = 0;
-        }
-        break;
+//          }
+//          reset_all_nodes(except, true);
+//          for ( int address = 1; address <= cluster_head_count; address++ ) {
+//            network.update();                          // Check the network regularly
+//            /*bool*/ ok = false;
+//            Serial.print("150: 0");
+//            Serial.print(address, OCT);
+//            Serial.print(" => 170: 0");
+//            Serial.println(except[address - 1], OCT);
+//            payload_t payload = { 150, this_node, except[address - 1], 0, false };
+//            RF24NetworkHeader header(/*to cluster head*/ address);
+////            while (!ok) {
+//              ok = network.write(header,&payload,sizeof(payload));
+////              delay(50);
+////            }
+//          delay(250);
+//          }
+//          setup_counter = 0;
+//          leach_counter = 0;
+//        }
+//        else if (setup_counter == node_count) {
+//          reset_all_nodes(except, false);
+//          setup_counter = 0;
+//          leach_counter = 0;
+//        }
+//        break;
     }
   }
 }
 
-void reset_all_nodes(uint16_t *except, bool leach_increment) {
-  if ( leach_increment == true ) {
-    Serial.println("Resetting nodes.");
-    for ( int i = 0; i < node_count; i++ ) {
-      bool ok = false;
-      if ( received_address[i] != except[0] && received_address[i] != except[1] ) {
-        Serial.print("0");
-        Serial.print(received_address[i], OCT);
-        Serial.print(" 200 ");
-        Serial.println(is_leach[i]);
-        payload_t payload = { 200, this_node, received_address[i], 0, false };
-        RF24NetworkHeader header(/*to node*/ received_address[i]);
-//        while (!ok) {
-          ok = network.write(header,&payload,sizeof(payload));
-//          delay(50);
-//        }
-      }
-    }
-  }
-  else {
-    Serial.println("Resetting nodes. but not incrementing LEACH round.");
-    for ( int i = 0; i < node_count; i++ ) {
-      bool ok = false;
-      Serial.print("0");
-      Serial.print(received_address[i], OCT);
-      Serial.print(" 210 ");
-      Serial.println(is_leach[i]);
-      payload_t payload = { 210, this_node, received_address[i], 0, false };
-      RF24NetworkHeader header(/*to node*/ received_address[i]);ok = network.write(header,&payload,sizeof(payload));
-//      while (!ok) {
-//        delay(50);
+//void reset_all_nodes(uint16_t *except, bool leach_increment) {
+//  if ( leach_increment == true ) {
+//    Serial.println("Resetting nodes.");
+//    for ( int i = 0; i < node_count; i++ ) {
+//      bool ok = false;
+//      if ( received_address[i] != except[0] && received_address[i] != except[1] ) {
+//        Serial.print("0");
+//        Serial.print(received_address[i], OCT);
+//        Serial.print(" 200 ");
+//        Serial.println(is_leach[i]);
+//        payload_t payload = { 200, this_node, received_address[i], 0, false };
+//        RF24NetworkHeader header(/*to node*/ received_address[i]);
+////        while (!ok) {
+//          ok = network.write(header,&payload,sizeof(payload));
+////          delay(50);
+////        }
 //      }
-    }
-  }
-  for ( int i = 0; i < node_count; i++ ) {
-    received_address[i] = 0;
-    is_leach[i] = NULL;
-  }
-}
+//    }
+//  }
+//  else {
+//    Serial.println("Resetting nodes. but not incrementing LEACH round.");
+//    for ( int i = 0; i < node_count; i++ ) {
+//      bool ok = false;
+//      Serial.print("0");
+//      Serial.print(received_address[i], OCT);
+//      Serial.print(" 210 ");
+//      Serial.println(is_leach[i]);
+//      payload_t payload = { 210, this_node, received_address[i], 0, false };
+//      RF24NetworkHeader header(/*to node*/ received_address[i]);ok = network.write(header,&payload,sizeof(payload));
+////      while (!ok) {
+////        delay(50);
+////      }
+//    }
+//  }
+//  for ( int i = 0; i < node_count; i++ ) {
+//    received_address[i] = 0;
+//    is_leach[i] = NULL;
+//  }
+//}

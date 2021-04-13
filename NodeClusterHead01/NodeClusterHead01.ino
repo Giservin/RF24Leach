@@ -160,42 +160,42 @@ void loop() {
     bool ok = false;
     Serial.println(received_payload.command);
     
-    //change cluster head
-    if ( received_payload.command == 150 && packets_sent > 3 ) {
-      Serial.println("Changing cluster head.");
-      Serial.print("0");
-      Serial.print(received_payload.data, OCT);
-      Serial.println(" 170 ");
-      while (!ok) {
-        payload_t payload = { 170, this_node_id, /*use this CH as an address*/this_node, 0, false };
-        RF24NetworkHeader header(/*to node*/ received_payload.data);
-        ok = network.write(header,&payload,sizeof(payload));
-        delay(20);
-      }
-      this_node = received_payload.data;
-      packets_sent = 0;
-      leach_rounds++;
-      is_cluster_head = false;
-      network.begin(/*channel*/ 90, /*node address*/ this_node);
-    }
-    else if ( received_payload.command == 170 && packets_sent > 3  ) {
-      Serial.println("ok. now this node is a cluster head.");
-      leach_already_ch = true;
-      this_node = received_payload.data;
-      packets_sent = 0;
-      leach_rounds++;
-      is_cluster_head = true;
-      network.begin(/*channel*/ 90, /*node address*/ this_node);
-    }
-    else if ( received_payload.command == 200 && packets_sent > 3  ) {
-      Serial.println("ok. reset.");
-      packets_sent = 0;
-      leach_rounds++;
-    }
-    else if ( received_payload.command == 210 && packets_sent > 3 ) {
-      Serial.println("continue. no leach increment.");
-      packets_sent = 8;
-    }
+//    //change cluster head
+//    if ( received_payload.command == 150 && packets_sent > 3 ) {
+//      Serial.println("Changing cluster head.");
+//      Serial.print("0");
+//      Serial.print(received_payload.data, OCT);
+//      Serial.println(" 170 ");
+//      while (!ok) {
+//        payload_t payload = { 170, this_node_id, /*use this CH as an address*/this_node, 0, false };
+//        RF24NetworkHeader header(/*to node*/ received_payload.data);
+//        ok = network.write(header,&payload,sizeof(payload));
+//        delay(20);
+//      }
+//      this_node = received_payload.data;
+//      packets_sent = 0;
+//      leach_rounds++;
+//      is_cluster_head = false;
+//      network.begin(/*channel*/ 90, /*node address*/ this_node);
+//    }
+//    else if ( received_payload.command == 170 && packets_sent > 3  ) {
+//      Serial.println("ok. now this node is a cluster head.");
+//      leach_already_ch = true;
+//      this_node = received_payload.data;
+//      packets_sent = 0;
+//      leach_rounds++;
+//      is_cluster_head = true;
+//      network.begin(/*channel*/ 90, /*node address*/ this_node);
+//    }
+//    else if ( received_payload.command == 200 && packets_sent > 3  ) {
+//      Serial.println("ok. reset.");
+//      packets_sent = 0;
+//      leach_rounds++;
+//    }
+//    else if ( received_payload.command == 210 && packets_sent > 3 ) {
+//      Serial.println("continue. no leach increment.");
+//      packets_sent = 8;
+//    }
   }
   
   //========== Sending  ==========//
@@ -215,24 +215,24 @@ void loop() {
       Serial.println("failed.");
     }
 
-    //reset if all nodes already a CH
-    if ( leach_rounds % leach_percentage_simplified == 0 && packets_sent > 10 && leach_rounds > 1) {
-      Serial.println("reset leach_already_ch to false");
-      leach_already_ch = false;
-    }
-    //Node ask to be a cluster head if already sent 10 or more packets
-    if (packets_sent > 10 && is_cluster_head == false && packets_sent % 5 == 1) {
-      bool cluster_head_candidate = leach();
-      Serial.println("ask for cluster head role");
-      payload_t payload = {/*command for asking to be a cluster head*/ 100, this_node_id, 0, 0, cluster_head_candidate };
-      RF24NetworkHeader header(/*to node*/ base_station_node);
-      ok = network.write(header,&payload,sizeof(payload));
-    }
+//    //reset if all nodes already a CH
+//    if ( leach_rounds % leach_percentage_simplified == 0 && packets_sent > 10 && leach_rounds > 1) {
+//      Serial.println("reset leach_already_ch to false");
+//      leach_already_ch = false;
+//    }
+//    //Node ask to be a cluster head if already sent 10 or more packets
+//    if (packets_sent > 10 && is_cluster_head == false && packets_sent % 5 == 1) {
+//      bool cluster_head_candidate = leach();
+//      Serial.println("ask for cluster head role");
+//      payload_t payload = {/*command for asking to be a cluster head*/ 100, this_node_id, 0, 0, cluster_head_candidate };
+//      RF24NetworkHeader header(/*to node*/ base_station_node);
+//      ok = network.write(header,&payload,sizeof(payload));
+//    }
   }
 
   /***************************** CALLING THE NEW SLEEP FUNCTION ************************/    
  
-  if ( !is_cluster_head && packets_sent < 10 ) {  // Want to make sure the Arduino stays awake for a little while when data comes in. Do NOT sleep if master node.
+  if ( !is_cluster_head /*&& packets_sent < 10*/ ) {  // Want to make sure the Arduino stays awake for a little while when data comes in. Do NOT sleep if master node.
     sleepTimer = millis();
     sleep_count++;
     Serial.println("Sleep");                           // Reset the timer value
@@ -260,25 +260,25 @@ void loop() {
   }
   
 }
-bool leach() {
-  if ( !leach_already_ch ) {
-    float threshold = leach_percentage / (1 - leach_percentage * (leach_rounds % leach_percentage_simplified));
-    float random_number = random(0, 101);
-    random_number = random_number / 100;
-    Serial.print("Random Number: ");
-    Serial.print(random_number);
-    Serial.print(" < ");
-    Serial.print(threshold);
-    Serial.println(" : Random Number");
-    if ( random_number <= threshold ) {
-      return true;
-    }
-    else{
-      return false;
-    }
-  }
-  else {
-    Serial.println("already ch");
-    return false;
-  }
-}
+//bool leach() {
+//  if ( !leach_already_ch ) {
+//    float threshold = leach_percentage / (1 - leach_percentage * (leach_rounds % leach_percentage_simplified));
+//    float random_number = random(0, 101);
+//    random_number = random_number / 100;
+//    Serial.print("Random Number: ");
+//    Serial.print(random_number);
+//    Serial.print(" < ");
+//    Serial.print(threshold);
+//    Serial.println(" : Random Number");
+//    if ( random_number <= threshold ) {
+//      return true;
+//    }
+//    else{
+//      return false;
+//    }
+//  }
+//  else {
+//    Serial.println("already ch");
+//    return false;
+//  }
+//}
