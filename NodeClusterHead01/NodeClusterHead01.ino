@@ -30,7 +30,7 @@ unsigned long leach_rounds = 1;
 bool leach_already_ch = false;
 
 // SENDING variable
-const unsigned long interval = 2000; //ms  // How often to send 'hello world to the other unit
+//const unsigned long interval = 2000; //ms  // How often to send 'hello world to the other unit
 unsigned long last_sent;             // When did we last send?
 unsigned long packets_sent;          // How many have we sent already
 
@@ -48,6 +48,8 @@ struct payload_t {                  // Structure of our payload
   float avg_current;
   bool leach;
 };
+//const unsigned long interval = 2000;
+const unsigned long interval = 600;
 
 int pilih;
 void setup(void)
