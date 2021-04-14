@@ -200,7 +200,7 @@ void loop() {
   
   //========== Sending  ==========//
   unsigned long now = millis();              // If it's time to send a message, send it!
-  if ( now - last_sent >= interval || ( sleep_count > 7 && !is_cluster_head ) ) {
+  if ( now - last_sent >= interval /*|| ( sleep_count > 7 && !is_cluster_head )*/ ) {
     last_sent = now;
     Serial.print("Sending...");
     payload_t payload = { 0, this_node_id, packets_sent, avg_current, true };

@@ -56,18 +56,18 @@ void loop(void){
     
     RF24NetworkHeader received_header;        // If so, grab it and print it out
     payload_t received_payload;
-    network.read(received_header,&received_payload,sizeof(received_payload));
-    // Send date
-    Serial.print(rtc.getDateStr());
-    Serial.print(" - ");
-    // Send time
-    Serial.print(rtc.getTimeStr());
-    Serial.print(" -- ");
-    bool registered;
-    bool ok;
-    uint16_t except[cluster_head_count];
-    switch ( received_payload.command ) {
-      case 0:
+//    bool registered;
+//    bool ok;
+//    uint16_t except[cluster_head_count];
+//    switch ( received_payload.command ) {
+//      case 0:
+        network.read(received_header,&received_payload,sizeof(received_payload));
+        // Send date
+        Serial.print(rtc.getDateStr());
+        Serial.print(" - ");
+        // Send time
+        Serial.print(rtc.getTimeStr());
+        Serial.print(" -- ");
         Serial.print("Node 0");
         Serial.print(received_header.from_node, OCT);
         Serial.print(", ID: ");
@@ -77,7 +77,7 @@ void loop(void){
         Serial.print(" - Average current: ");
         Serial.print(received_payload.avg_current);
         Serial.println(" mA");
-        break;
+//        break;
         
 //      case 100:
 //        /*bool*/ registered = false; 
@@ -145,7 +145,7 @@ void loop(void){
 //          leach_counter = 0;
 //        }
 //        break;
-    }
+//    }
   }
 }
 
