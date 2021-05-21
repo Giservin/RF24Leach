@@ -52,7 +52,7 @@ struct payload_t {                  // Structure of our payload
 int pilih;
 void setup(void)
 {
-//  pilih = 0;
+  pilih = 0;
 //  pilih = 1;
 //  pilih = 2;
 //  pilih = 3;
@@ -62,7 +62,7 @@ void setup(void)
 //  pilih = 6;
 //  pilih = 7;
 //  pilih = 8;
-  pilih = 9;
+//  pilih = 9;
    switch(pilih){
     case 0:
       this_node_id = 65;
@@ -201,17 +201,17 @@ void loop() {
   //========== Sending  ==========//
   unsigned long now = millis();              // If it's time to send a message, send it!
   if ( now - last_sent >= interval || ( sleep_count > 7 && !is_cluster_head ) ) {
+    unsigned long transmission_time = millis();
     last_sent = now;
     Serial.print("Sending...");
-    unsigned long transmission_time = millis();
     payload_t payload = { 0, this_node_id, packets_sent, avg_current, true };
     RF24NetworkHeader header(/*to node*/ base_station_node);
     bool ok = network.write(header,&payload,sizeof(payload));
     sleep_count = 0;
     if (ok) {
-      transmission_time = transmission_time - millis();
       packets_sent++;
       Serial.print("ok, transmission time: ");
+      transmission_time = millis() - transmission_time;
       Serial.print(transmission_time);
       Serial.println("ms");
     }
