@@ -203,13 +203,17 @@ void loop() {
   if ( now - last_sent >= interval || ( sleep_count > 7 && !is_cluster_head ) ) {
     last_sent = now;
     Serial.print("Sending...");
+    unsigned long transmission_time = millis();
     payload_t payload = { 0, this_node_id, packets_sent, avg_current, true };
     RF24NetworkHeader header(/*to node*/ base_station_node);
     bool ok = network.write(header,&payload,sizeof(payload));
     sleep_count = 0;
     if (ok) {
+      transmission_time = transmission_time - millis();
       packets_sent++;
-      Serial.println("ok.");
+      Serial.print("ok, transmission time: ");
+      Serial.print(transmission_time);
+      Serial.println("ms");
     }
     else {
       Serial.println("failed.");
