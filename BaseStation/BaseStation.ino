@@ -21,6 +21,7 @@ unsigned long leach_rounds = 0;
 unsigned long leach_counter = 0;
 unsigned long setup_counter = 0;
 uint16_t discovery_counter = 0;
+uint16_t discovery_id[10];
 uint16_t discovery_address[10];
 bool is_leach[node_count];
 
@@ -91,7 +92,7 @@ void loop(void){
       uint16_t discovery;
       bool check = false;
       for ( int i = 0; i < 10; i++ ) {
-        if ( discovery_address[i] == received_payload.node_id ) {
+        if ( discovery_id[i] == received_payload.node_id ) {
           check = true;
           discovery = i;
           break;
@@ -121,10 +122,13 @@ void loop(void){
         } else if ( discovery_counter == 9 ) {
           discovery = 34;
         }
+        discovery_id[discovery_counter] = received_payload.node_id;
         discovery_address[discovery_counter] = discovery;
         discovery_counter++;
       }
       else {
+        Serial.print("Already received discovery command by node ID: ");
+        Serial.print(received_payload.node_id);
         discovery = discovery_address[discovery];
       }
       Serial.print(", assigned with address: 0");

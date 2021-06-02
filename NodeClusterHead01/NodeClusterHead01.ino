@@ -52,8 +52,8 @@ struct payload_t {                  // Structure of our payload
 
 void setup(void)
 {
-//  this_node_id = 65;  //A
-  this_node_id = 66;  //B
+  this_node_id = 65;  //A
+//  this_node_id = 66;  //B
 //  this_node_id = 67;  //C
 //  this_node_id = 68;  //D
 //  this_node_id = 69;  //E
@@ -120,6 +120,7 @@ void loop() {
     //change cluster head
     if ( received_payload.command == 10 ) {
       if ( received_payload.node_id == this_node_id ) {
+        discovered = true;
         this_node = received_payload.data;
         if ( this_node == 1 || this_node == 2 ) {
           is_cluster_head = true;
@@ -178,7 +179,6 @@ void loop() {
     bool ok = network.write(header,&payload,sizeof(payload));
     if (ok) {
       Serial.println("sending discovery... ok");
-      discovered = true;
     } else {
       Serial.println("sending discovery... failed");
     }
