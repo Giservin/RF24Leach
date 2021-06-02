@@ -74,15 +74,6 @@ void setup(void)
   
   Serial.begin(115200);
   Serial.println("RF24Leach/NodeClusterHead01");
-
-//  if ( this_node == 1 || this_node == 2 ) {
-//    is_cluster_head = true;
-//    leach_already_ch = true;
-//    Serial.println("This is Cluster Head");
-//  }
-//  else {
-//    is_cluster_head = false;
-//  }
  
   SPI.begin();
 
