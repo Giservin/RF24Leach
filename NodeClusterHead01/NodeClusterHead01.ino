@@ -17,7 +17,7 @@ RF24Network network(radio);          // Network uses that radio
 
 //  ADDRESSING variable
 /*const*/ char this_node_id;// = 1;
-/*const*/ uint16_t this_node;// = 01;        // Address of our node in Octal format
+/*const*/ uint16_t this_node = 01;// = 01;        // Address of our node in Octal format
 const uint16_t cluster_head_node = 01; // Address of the cluster head node in Octal format
 const uint16_t base_station_node = 00;        // Address of the other node in Octal format
 
@@ -28,6 +28,7 @@ const float leach_percentage = 0.2;
 const uint16_t leach_percentage_simplified = 1 / leach_percentage;
 unsigned long leach_rounds = 1;
 bool leach_already_ch = false;
+bool discovered = false;
 
 // SENDING variable
 const unsigned long interval = 2000; //ms  // How often to send 'hello world to the other unit
@@ -49,63 +50,19 @@ struct payload_t {                  // Structure of our payload
   bool leach;
 };
 
-int pilih;
 void setup(void)
 {
-  pilih = 0;
-//  pilih = 1;
-//  pilih = 2;
-//  pilih = 3;
-//  pilih = 4;
-//
-//  pilih = 5;
-//  pilih = 6;
-//  pilih = 7;
-//  pilih = 8;
-//  pilih = 9;
-   switch(pilih){
-    case 0:
-      this_node_id = 65;
-      this_node = 01;        // Address of our node in Octal format
-      break;
-    case 1:
-      this_node_id = 66;
-      this_node = 011;        // Address of our node in Octal format
-      break;
-    case 2:
-      this_node_id = 67;
-      this_node = 021;        // Address of our node in Octal format
-      break;
-    case 3:
-      this_node_id = 68;
-      this_node = 031;        // Address of our node in Octal format
-      break;
-    case 4:
-      this_node_id = 69;
-      this_node = 041;        // Address of our node in Octal format
-      break;
-      
-    case 5:
-      this_node_id = 70;
-      this_node = 02;        // Address of our node in Octal format
-      break;
-    case 6:
-      this_node_id = 71;
-      this_node = 012;        // Address of our node in Octal format
-      break;
-    case 7:
-      this_node_id = 72;
-      this_node = 022;        // Address of our node in Octal format
-      break;
-    case 8:
-      this_node_id = 73;
-      this_node = 032;        // Address of our node in Octal format
-      break;
-    case 9:
-      this_node_id = 74;
-      this_node = 042;        // Address of our node in Octal format
-      break;
-  }
+//  this_node_id = 65;  //A
+  this_node_id = 66;  //B
+//  this_node_id = 67;  //C
+//  this_node_id = 68;  //D
+//  this_node_id = 69;  //E
+//  
+//  this_node_id = 70;  //F
+//  this_node_id = 71;  //G
+//  this_node_id = 72;  //H
+//  this_node_id = 73;  //I
+//  this_node_id = 74;  //J
 
   if (! ina219.begin()) {
     Serial.println("Failed to find INA219 chip");
@@ -118,14 +75,14 @@ void setup(void)
   Serial.begin(115200);
   Serial.println("RF24Leach/NodeClusterHead01");
 
-  if ( this_node == 1 || this_node == 2 ) {
-    is_cluster_head = true;
-    leach_already_ch = true;
-    Serial.println("This is Cluster Head");
-  }
-  else {
-    is_cluster_head = false;
-  }
+//  if ( this_node == 1 || this_node == 2 ) {
+//    is_cluster_head = true;
+//    leach_already_ch = true;
+//    Serial.println("This is Cluster Head");
+//  }
+//  else {
+//    is_cluster_head = false;
+//  }
  
   SPI.begin();
 
@@ -161,7 +118,23 @@ void loop() {
     Serial.println(received_payload.command);
     
     //change cluster head
-    if ( received_payload.command == 150 && packets_sent > 3 ) {
+    if ( received_payload.command == 10 ) {
+      if ( received_payload.node_id == this_node_id ) {
+        this_node = received_payload.data;
+        if ( this_node == 1 || this_node == 2 ) {
+          is_cluster_head = true;
+          leach_already_ch = true;
+          Serial.println("This is Cluster Head");
+        }
+        else {
+          is_cluster_head = false;
+        }
+        Serial.print("This new address is: ");
+        Serial.println(this_node, OCT);
+        network.begin(/*channel*/ 90, /*node address*/ this_node);
+      }
+    }
+    else if ( received_payload.command == 150 && packets_sent > 3 ) {
       Serial.println("Changing cluster head.");
       Serial.print("0");
       Serial.print(received_payload.data, OCT);
@@ -199,6 +172,18 @@ void loop() {
   }
   
   //========== Sending  ==========//
+  if ( !discovered ) {
+    payload_t payload = { 10, this_node_id, 0, 0, false };
+    RF24NetworkHeader header(/*to node*/ base_station_node);
+    bool ok = network.write(header,&payload,sizeof(payload));
+    if (ok) {
+      Serial.println("sending discovery... ok");
+      discovered = true;
+    } else {
+      Serial.println("sending discovery... failed");
+    }
+  }
+  
   unsigned long now = millis();              // If it's time to send a message, send it!
   if ( now - last_sent >= interval || ( sleep_count > 7 && !is_cluster_head ) ) {
     unsigned long transmission_time = millis();
