@@ -13,8 +13,8 @@ const uint16_t this_node = 00;    // Address of our node in Octal format ( 04,03
 const uint16_t base_station_node = 00;   // Address of the other node in Octal format
 
 //  SETTINGS variable
-const uint16_t node_count = 8;                    //change to add node
-const uint16_t cluster_head_count = 2;            //change to add node
+const uint16_t node_count = 8;                //change to add node
+const uint16_t cluster_head_count = 2;        //change to add node
 
 uint16_t received_address[node_count];
 unsigned long leach_rounds = 0;

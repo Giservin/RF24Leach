@@ -1,0 +1,1 @@
+This is a pure form of LEACH, the cluster head can't be the same if other node haven't be a cluster head.
