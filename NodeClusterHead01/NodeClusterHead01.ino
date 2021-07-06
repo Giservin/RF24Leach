@@ -27,7 +27,7 @@ bool is_cluster_head;             // Am i a cluster head?
 const float leach_percentage = 0.2;
 const uint16_t leach_percentage_simplified = 1 / leach_percentage;
 unsigned long leach_rounds = 1;
-bool leach_already_ch = false;
+//bool leach_already_ch = false;
 bool discovered = false;
 
 // SENDING variable
@@ -52,13 +52,13 @@ struct payload_t {                  // Structure of our payload
 
 void setup(void)
 {
-  this_node_id = 65;  //A
+//  this_node_id = 65;  //A
 //  this_node_id = 66;  //B
 //  this_node_id = 67;  //C
 //  this_node_id = 68;  //D
 //  this_node_id = 69;  //E
 //  
-//  this_node_id = 70;  //F
+  this_node_id = 70;  //F
 //  this_node_id = 71;  //G
 //  this_node_id = 72;  //H
 //  this_node_id = 73;  //I
@@ -115,7 +115,7 @@ void loop() {
         this_node = received_payload.data;
         if ( this_node == 1 || this_node == 2 ) {
           is_cluster_head = true;
-          leach_already_ch = true;
+//          leach_already_ch = true;
           Serial.println("This is Cluster Head");
         }
         else {
@@ -145,7 +145,7 @@ void loop() {
     }
     else if ( received_payload.command == 170 && packets_sent > 3  ) {
       Serial.println("ok. now this node is a cluster head.");
-      leach_already_ch = true;
+//      leach_already_ch = true;
       this_node = received_payload.data;
       packets_sent = 0;
       leach_rounds++;
@@ -196,15 +196,14 @@ void loop() {
     }
 
     //reset if all nodes already a CH
-    if ( leach_rounds % leach_percentage_simplified == 0 && packets_sent > 10 && leach_rounds > 1) {
-      Serial.println("reset leach_already_ch to false");
-      leach_already_ch = false;
-    }
+//    if ( leach_rounds % leach_percentage_simplified == 0 && packets_sent > 10 && leach_rounds > 1) {
+//      Serial.println("reset leach_already_ch to false");
+//      leach_already_ch = false;
+//    }
     //Node ask to be a cluster head if already sent 10 or more packets
     if (packets_sent > 10 && is_cluster_head == false && packets_sent % 5 == 1) {
-      bool cluster_head_candidate = leach();
       Serial.println("ask for cluster head role");
-      payload_t payload = {/*command for asking to be a cluster head*/ 100, this_node_id, 0, 0, cluster_head_candidate };
+      payload_t payload = {/*command for asking to be a cluster head*/ 100, this_node_id, 0, avg_current, true };
       RF24NetworkHeader header(/*to node*/ base_station_node);
       ok = network.write(header,&payload,sizeof(payload));
     }
@@ -239,26 +238,4 @@ void loop() {
     digitalWrite(8, LOW);
   }
   
-}
-bool leach() {
-  if ( !leach_already_ch ) {
-    float threshold = leach_percentage / (1 - leach_percentage * (leach_rounds % leach_percentage_simplified));
-    float random_number = random(0, 101);
-    random_number = random_number / 100;
-    Serial.print("Random Number: ");
-    Serial.print(random_number);
-    Serial.print(" < ");
-    Serial.print(threshold);
-    Serial.println(" : Random Number");
-    if ( random_number <= threshold ) {
-      return true;
-    }
-    else{
-      return false;
-    }
-  }
-  else {
-    Serial.println("already ch");
-    return false;
-  }
 }

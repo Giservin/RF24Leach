@@ -21,8 +21,9 @@ unsigned long leach_rounds = 0;
 unsigned long leach_counter = 0;
 unsigned long setup_counter = 0;
 uint16_t discovery_counter = 0;
-uint16_t discovery_id[10];
-uint16_t discovery_address[10];
+uint16_t discovery_id[node_count + cluster_head_count];
+uint16_t discovery_address[node_count + cluster_head_count];
+float energy_level[node_count];
 bool is_leach[node_count];
 
 struct payload_t {                 // Structure of our payload
@@ -158,92 +159,84 @@ void loop(void){
         Serial.print(" with id ");
         Serial.print(received_payload.node_id);
         Serial.print(" with leach payload ");
-        Serial.println(received_payload.leach);
-        if ( received_payload.leach == true ) {
-          is_leach[setup_counter] = received_payload.leach;
-          leach_counter++;
-        }
+        Serial.print(received_payload.leach);
+        Serial.print(" and energy level ");
+        Serial.println(received_payload.avg_current);
+//        if ( received_payload.leach == true ) {
+//          is_leach[setup_counter] = received_payload.leach;
+//          leach_counter++;
+//        }
+        energy_level[setup_counter] = received_payload.avg_current;
         received_address[setup_counter] = received_header.from_node;
         setup_counter++;
       }
       //anggota telah penuh, kirim command ke base station
-      if(setup_counter == node_count && leach_counter >= cluster_head_count) {
-        network.update();                          // Check the network regularly
-        Serial.println("Cluster head will change.");
-        for ( int cluster_head_address = 1; cluster_head_address <= cluster_head_count; cluster_head_address++ ) {
-          for ( int i = 0; i < node_count; i++ ) {
-            /*bool*/ ok = false;
-            if ( is_leach[i] == true ) {
-              is_leach[i] = false;
-              except[cluster_head_address - 1] = received_address[i];
-              break;
+      if ( setup_counter == node_count ) {
+        //energy SORT
+        bool had_swapped;
+        do {
+          had_swapped = false;
+          for ( int i = 0; i < node_count - 1; i++ ) {
+            if ( energy_level[i] > energy_level[i + 1] ) {
+              float temp = energy_level[i];
+              energy_level[i] = energy_level[i + 1];
+              energy_level[i + 1] = temp;
+              uint16_t temp_address = received_address[i];
+              received_address[i] = received_address[i + 1];
+              received_address[i + 1] = temp_address;            
+              had_swapped = true;
             }
           }
         }
-        reset_all_nodes(except, true);
-        for ( int address = 1; address <= cluster_head_count; address++ ) {
-          network.update();                          // Check the network regularly
-          /*bool*/ ok = false;
-          Serial.print("150: 0");
-          Serial.print(address, OCT);
-          Serial.print(" => 170: 0");
-          Serial.println(except[address - 1], OCT);
-          payload_t payload = { 150, this_node, except[address - 1], 0, false };
-          RF24NetworkHeader header(/*to cluster head*/ address);
-//        while (!ok) {
-          ok = network.write(header,&payload,sizeof(payload));
-//          delay(50);
-//        }
-          delay(250);
+        //print sorted energy level
+        while (had_swapped);
+        for (int i = 0; i < node_count; i++) {
+          Serial.print(energy_level[i]);
+          Serial.print("  ");
+        }
+        Serial.println("");
+        for (int i = 0; i < node_count; i++) {
+          Serial.print("0");
+          Serial.print(received_address[i], OCT);
+          Serial.print("  ");
+        }
+        Serial.println("");
+        //sending reset and CH switch to node
+        for( int i = node_count - 1; i >= 0; i-- ) {
+          if ( i < 2 ) {
+            network.update();                          // Check the network regularly
+            bool ok = false;
+            Serial.print("150: 0");
+            Serial.print(i + 1, OCT);
+            Serial.print(" => 170: 0");
+            Serial.println(received_address[i], OCT);
+            payload_t payload = { 150, this_node, received_address[i], 0, false };
+            RF24NetworkHeader header(/*to cluster head*/ i + 1);
+//          while (!ok) {
+            ok = network.write(header,&payload,sizeof(payload));
+//            delay(50);
+//          }
+            delay(250);
+          }
+          else {
+            Serial.print("0");
+            Serial.print(received_address[i], OCT);
+            Serial.print(" 200 ");
+            Serial.println(is_leach[i]);
+            payload_t payload = { 200, this_node, received_address[i], 0, false };
+            RF24NetworkHeader header(/*to node*/ received_address[i]);
+//          while (!ok) {
+            ok = network.write(header,&payload,sizeof(payload));
+//            delay(50);
+//          }
+          }
+        }
+        for ( int i = 0; i < node_count; i++ ) {
+          received_address[i] = 0;
+          energy_level[i] = 0;
         }
         setup_counter = 0;
-        leach_counter = 0;
-      }
-      else if (setup_counter == node_count) {
-        reset_all_nodes(except, false);
-        setup_counter = 0;
-        leach_counter = 0;
       }
     }
-  }
-}
-
-void reset_all_nodes(uint16_t *except, bool leach_increment) {
-  if ( leach_increment == true ) {
-    Serial.println("Resetting nodes.");
-    for ( int i = 0; i < node_count; i++ ) {
-      bool ok = false;
-      if ( received_address[i] != except[0] && received_address[i] != except[1] ) {
-        Serial.print("0");
-        Serial.print(received_address[i], OCT);
-        Serial.print(" 200 ");
-        Serial.println(is_leach[i]);
-        payload_t payload = { 200, this_node, received_address[i], 0, false };
-        RF24NetworkHeader header(/*to node*/ received_address[i]);
-//        while (!ok) {
-          ok = network.write(header,&payload,sizeof(payload));
-//          delay(50);
-//        }
-      }
-    }
-  }
-  else {
-    Serial.println("Resetting nodes. but not incrementing LEACH round.");
-    for ( int i = 0; i < node_count; i++ ) {
-      bool ok = false;
-      Serial.print("0");
-      Serial.print(received_address[i], OCT);
-      Serial.print(" 210 ");
-      Serial.println(is_leach[i]);
-      payload_t payload = { 210, this_node, received_address[i], 0, false };
-      RF24NetworkHeader header(/*to node*/ received_address[i]);ok = network.write(header,&payload,sizeof(payload));
-//      while (!ok) {
-//        delay(50);
-//      }
-    }
-  }
-  for ( int i = 0; i < node_count; i++ ) {
-    received_address[i] = 0;
-    is_leach[i] = NULL;
   }
 }
