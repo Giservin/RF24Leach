@@ -14,5 +14,4 @@ Install these libraries in your Arduino library folder
 
 
 ## Note
-For RF24Network Library Sleep Function: NEW - Nodes can now be slept while the radio is not actively transmitting. This must be manually enabled by uncommenting the `#define ENABLE_SLEEP_MODE` in `RF24Network_config.h`
-
+For RF24Network Library Sleep Function to work, it must be manually enabled by uncommenting the `#define ENABLE_SLEEP_MODE` in `RF24Network_config.h`
