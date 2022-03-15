@@ -9,11 +9,11 @@ DS3231  rtc(SDA, SCL);
 RF24 radio(9,10);                // nRF24L01(+) radio attached using Getting Started board 
 
 RF24Network network(radio);      // Network uses that radio
-const uint16_t this_node = 00;    // Address of our node in Octal format ( 04,031, etc)
+const uint16_t this_node = 00;    // Address of our node in Octal format ( 04,031, etc) //Kenapa node perlu address, apa gk cukup pakai id?
 const uint16_t base_station_node = 00;   // Address of the other node in Octal format
 
 //  SETTINGS variable
-const uint16_t node_count = 8;                    //change to add node
+const uint16_t node_count = 8;                    //change to add node  //jumlah cluster head nya klo disini udah di fix in dulu
 const uint16_t cluster_head_count = 2;            //change to add node
 
 uint16_t received_address[node_count];
@@ -30,11 +30,11 @@ struct payload_t {                 // Structure of our payload
   uint16_t command;
   char node_id;
   unsigned long data;
-  float avg_current;
+  float avg_current; //dari sensor arus.
   bool leach;
 };
 
-void reset_all_nodes(uint16_t *except, bool leach_increment);
+void reset_all_nodes(uint16_t *except, bool leach_increment); //untuk apa?
 
 void setup(void)
 {
