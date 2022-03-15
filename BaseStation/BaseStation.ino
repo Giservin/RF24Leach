@@ -34,51 +34,51 @@ struct payload_t {                 // Structure of our payload
   bool leach;
 };
 
-void reset_all_nodes(uint16_t *except, bool leach_increment); //untuk apa?
+void reset_all_nodes(uint16_t *except, bool leach_increment); //untuk apa? Dapat dilihat except adalah parameter pertama tipe pointer (untuk array) untuk yg bukan CH
 
 void setup(void)
 {
   for ( int i = 0; i < 10; i++ ) {
-    discovery_address[i] = 0;
+    discovery_address[i] = 0; //pertama address nya dikasih 0 dulu?
   }
   Serial.begin(115200);
   
   // Initialize the rtc object
-  rtc.begin();
+  rtc.begin(); //untuk timer nya brarti
   
   Serial.println("RF24Leach/BaseStation/");
  
-  SPI.begin();
+  SPI.begin(); //buat koneksi nRF
 
-  radio.setPALevel(RF24_PA_LOW);  // RF24_PA_MAX is default.
+  radio.setPALevel(RF24_PA_LOW);  // RF24_PA_MAX is default. //biar low energy communication kan di nRF nya?
   radio.begin();
   network.begin(/*channel*/ 90, /*node address*/ this_node);
 }
 
 void loop(void){
   
-  network.update();                  // Check the network regularly
+  network.update();                  // Check the network regularly, network itu mengarah ke RF24Network (kyk nya termasuk syntax wajib).
 
   
   while ( network.available() ) {     // Is there anything ready for us?
     
     RF24NetworkHeader received_header;        // If so, grab it and print it out
-    payload_t received_payload;
-    network.read(received_header,&received_payload,sizeof(received_payload));
+    payload_t received_payload;               //object dr struct payload_t
+    network.read(received_header,&received_payload,sizeof(received_payload)); //header nya auto dr nRF nya, received_payloed refer to address, disini network read artinya , nRF ngeread wireless apakah ada yg ngirim data , disini akan diertima di payload dengan size payload dari struct
     // Send date
-    Serial.print(rtc.getDateStr());
+    Serial.print(rtc.getDateStr()); //dari library timer
     Serial.print(" - ");
     // Send time
     Serial.print(rtc.getTimeStr());
     Serial.print(" -- ");
     bool registered;
     bool ok;
-    uint16_t except[cluster_head_count];
+    uint16_t except[cluster_head_count]; //untuk apa ini? untuk node yg gk jadi CH
 
-    // command 0
+    // command 0 = untuk nerima data (di payload nya) kemudian di serial monitor kan.
     if ( received_payload.command == 0 ) {
       Serial.print("Node 0");
-      Serial.print(received_header.from_node, OCT);
+      Serial.print(received_header.from_node, OCT); //OCT??
       Serial.print(", ID: ");
       Serial.print(received_payload.node_id);
       Serial.print(" => #");
@@ -88,18 +88,18 @@ void loop(void){
       Serial.println(" mA");
     }
 
-    // command 10
+    // command 10 =  untuk discovery
     else if ( received_payload.command == 10 ) {
       uint16_t discovery;
       bool check = false;
-      for ( int i = 0; i < 10; i++ ) {
+      for ( int i = 0; i < 10; i++ ) { //ini nge cek apakah node nya sudah di discover oleh base station.
         if ( discovery_id[i] == received_payload.node_id ) {
           check = true;
           discovery = i;
           break;
         }
       }
-      if ( !check ) {
+      if ( !check ) { //kalau belum terdiscovery
         Serial.print("Received discovery command by node ID: ");
         Serial.print(received_payload.node_id);
         if ( discovery_counter == 0 ) {
@@ -121,7 +121,7 @@ void loop(void){
         } else if ( discovery_counter == 8 ) {
           discovery = 26;
         } else if ( discovery_counter == 9 ) {
-          discovery = 34;
+          discovery = 34; // 1, 9, 17, 25, 33, 2, 10, 18, 26, 34?????? maksudnya gimana? mungkin address nya.
         }
         discovery_id[discovery_counter] = received_payload.node_id;
         discovery_address[discovery_counter] = discovery;
@@ -130,13 +130,13 @@ void loop(void){
       else {
         Serial.print("Already received discovery command by node ID: ");
         Serial.print(received_payload.node_id);
-        discovery = discovery_address[discovery];
+        discovery = discovery_address[discovery]; //klo udh discovery, node nya
       }
       Serial.print(", assigned with address: 0");
-      Serial.println(discovery, OCT);
-      payload_t payload = {10, received_payload.node_id, discovery, 0, false };
+      Serial.println(discovery, OCT); //OCT?
+      payload_t payload = {10, received_payload.node_id, discovery, 0, false }; //ngisi struct nya
       RF24NetworkHeader header(received_header.from_node);
-      ok = network.write(header,&payload,sizeof(payload)); 
+      ok = network.write(header,&payload,sizeof(payload)); //ngirim packet ke node2 nya scr wireless.
     }
 
     // command 100
