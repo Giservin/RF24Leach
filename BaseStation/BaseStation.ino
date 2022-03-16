@@ -139,9 +139,9 @@ void loop(void){
       ok = network.write(header,&payload,sizeof(payload)); //ngirim packet ke node2 nya scr wireless.
     }
 
-    // command 100
+    // command 100 = untuk bikin Cluster?
     else if ( received_payload.command == 100 ) {
-      /*bool*/ registered = false; 
+      /*bool*/ registered = false; // belom ke register?
       for ( int i = 0; i < node_count; i++ ) {
         if ( received_address[i] == received_header.from_node ) {
           Serial.print("Already receiving setup command from Node 0");
@@ -155,36 +155,36 @@ void loop(void){
       //kumpulkan anggota hingga penuh
       if ( !registered ) {
         Serial.print("Received setup command from Node 0");
-        Serial.print(received_header.from_node, OCT);
+        Serial.print(received_header.from_node, OCT); //address node?
         Serial.print(" with id ");
         Serial.print(received_payload.node_id);
         Serial.print(" with leach payload ");
-        Serial.print(received_payload.leach);
+        Serial.print(received_payload.leach); //cluster head atau bukan?
         Serial.print(" and energy level ");
         Serial.println(received_payload.avg_current);
 //        if ( received_payload.leach == true ) {
 //          is_leach[setup_counter] = received_payload.leach;
-//          leach_counter++;
+//          leach_counter++; //brapa kali nya atau cluster head nya?
 //        }
         energy_level[setup_counter] = received_payload.avg_current;
-        received_address[setup_counter] = received_header.from_node;
-        setup_counter++;
+        received_address[setup_counter] = received_header.from_node; //address dari header nRF nya
+        setup_counter++; //ini jg maksudnya apa ? ohh buat ngumpulin anggota smpai sesuai jumlah node.
       }
       //anggota telah penuh, kirim command ke base station
       if ( setup_counter == node_count ) {
         //energy SORT
         bool had_swapped;
         do {
-          had_swapped = false;
+          had_swapped = false; //belom di lihat yg mana yg lebih besar atau kecil konsumsi energinya
           for ( int i = 0; i < node_count - 1; i++ ) {
             if ( energy_level[i] > energy_level[i + 1] ) {
               float temp = energy_level[i];
               energy_level[i] = energy_level[i + 1];
-              energy_level[i + 1] = temp;
+              energy_level[i + 1] = temp; //nge swap nilai energy level
               uint16_t temp_address = received_address[i];
-              received_address[i] = received_address[i + 1];
+              received_address[i] = received_address[i + 1]; //tukar address. Kenapa harus address ya? apa gk bisa ID?
               received_address[i + 1] = temp_address;            
-              had_swapped = true;
+              had_swapped = true; //sudah diswap
             }
           }
         }
@@ -197,41 +197,41 @@ void loop(void){
         Serial.println("");
         for (int i = 0; i < node_count; i++) {
           Serial.print("0");
-          Serial.print(received_address[i], OCT);
+          Serial.print(received_address[i], OCT); //oh OCT itu Octal, dalam bentuk octal address nya.
           Serial.print("  ");
         }
         Serial.println("");
         //sending reset and CH switch to node
         for( int i = node_count - 1; i >= 0; i-- ) {
-          if ( i < 2 ) {
+          if ( i < 2 ) { //ini maksudnya, jika node nya tinggal 2 artinya jadi cluster head, karena td energy level nya sudah di sort, dimana yg paling atas itu yg paling kecil konsumsinya atau yg paling banyak energinya
             network.update();                          // Check the network regularly
             bool ok = false;
             Serial.print("150: 0");
             Serial.print(i + 1, OCT);
             Serial.print(" => 170: 0");
             Serial.println(received_address[i], OCT);
-            payload_t payload = { 150, this_node, received_address[i], 0, false };
+            payload_t payload = { 150, this_node, received_address[i], 0, false }; //ngirim payload biar ngejadiin cluster head, command nya itu 150, ntar ada di program nodenya
             RF24NetworkHeader header(/*to cluster head*/ i + 1);
 //          while (!ok) {
             ok = network.write(header,&payload,sizeof(payload));
 //            delay(50);
 //          }
-            delay(250);
+            delay(250); //di delay dulu tah?
           }
           else {
             Serial.print("0");
             Serial.print(received_address[i], OCT);
             Serial.print(" 200 ");
-            Serial.println(is_leach[i]);
-            payload_t payload = { 200, this_node, received_address[i], 0, false };
+            Serial.println(is_leach[i]); //is_leach nya buat apa?
+            payload_t payload = { 200, this_node, received_address[i], 0, false }; //200 untuk ngejadiin anggota cluster, commandnya jg ntar ada di program nodenya
             RF24NetworkHeader header(/*to node*/ received_address[i]);
 //          while (!ok) {
-            ok = network.write(header,&payload,sizeof(payload));
+            ok = network.write(header,&payload,sizeof(payload)); //mengembalikan true jika berhasil terkirim.
 //            delay(50);
 //          }
           }
         }
-        for ( int i = 0; i < node_count; i++ ) {
+        for ( int i = 0; i < node_count; i++ ) { //me-reset variable-variable untuk round selanjutnya
           received_address[i] = 0;
           energy_level[i] = 0;
         }
@@ -240,3 +240,8 @@ void loop(void){
     }
   }
 }
+
+//Understood 60 % of this code , ada 3 pertanyaan yg perlu digali lagi:
+// 1. Kenapa pakai address, apakah pakai ID saja tidak bisa?
+// 2. Header dr nRF24 nya itu bagaimana berfungsinya, waktu itu bukannya discovery yg untuk address nya dikasih ke payload? kok jd ada di header ? (atau emg dr awal di header)?
+// 3. is_leach[] itu buat apa? apakah untuk anggota CH atau CH nya?
